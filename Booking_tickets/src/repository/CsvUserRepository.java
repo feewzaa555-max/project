@@ -28,7 +28,7 @@ public class CsvUserRepository implements UserRepository {
      */
     public CsvUserRepository(Path file) {
         if (file == null) {
-            throw new IllegalArgumentException("file must not be null"); //<- ที่อยู่ไฟล์ต้องมีจริง
+            throw new IllegalArgumentException("file must not be null"); //<- ห้ามส่ง null มา ส่วนตัวไฟล์ยังไม่มีก็ได้ save ครั้งแรกจะสร้างให้เอง
         }
         this.file = file;
         checkRep();
@@ -38,11 +38,11 @@ public class CsvUserRepository implements UserRepository {
     public User findByUsername(String username) throws IOException {
         for (String line : readLines()) {
             User user = parseLine(line); //parseline คือทำให้ข้อความประกอบเป็น user เช่น "thanawat,12345" จับ thanawat เป็น username จับ 12345 เป็นรหัส
-            if (user != null && user.username().equalsIgnoreCase(username)) { //user ไม่อ่านจนหมด และ user ตรงกับ username ที่รับมา
+            if (user != null && user.username().equalsIgnoreCase(username)) { // parseline ที่ส่งมาต้องไม่เป็น null และ user.username() ต้องเท่ากับ username ที่รับเข้ามา
                 return user; // ส่ง user ที่ตรงกับ username ออกไป
             }
         }
-        return null; // ไม่มีส่ง null
+        return null; // ไม่มี user ที่ตรงกับ username ส่ง null
 
         // ทั้ง return user และ return null ส่งไปให้ authservice พิจารณา
     }
@@ -56,7 +56,7 @@ public class CsvUserRepository implements UserRepository {
             throw new IllegalArgumentException("username must not contain ,");
         }
         List<String> lines = readLines();
-        lines.add(user.username() + "," + user.password());
+        lines.add(user.username() + "," + user.password()); //"thanawat,12345"
 
         Path folder = file.getParent(); //file.getparent ได้ folder ที่ file อยู่
         if (folder != null) {
@@ -68,9 +68,10 @@ public class CsvUserRepository implements UserRepository {
     // อ่านทุกบรรทัดในไฟล์ ถ้ายังไม่มีไฟล์ คืน List ว่าง
     private List<String> readLines() throws IOException { //<- ถ้าเกิด IOException function นี้จะไม่จัดการแต่จะโยนให้ตัวที่มันเรียกใช้ function นี้
         if (!Files.exists(file)) {
-            return new ArrayList<>();
+            return new ArrayList<>();//มีไฟล์ไหม
         }
-        return new ArrayList<>(Files.readAllLines(file, StandardCharsets.UTF_8)); //<-อ่านทีละบรรทัดใน fileแล้วก็ยัดใส่ ArrayList() ทีละตัว -> ["thanawat,12345", "somchai,abcde"]  , โดยอ่านเป็น UTF_8
+        return new ArrayList<>(Files.readAllLines(file, StandardCharsets.UTF_8)); 
+        //<-อ่านทีละบรรทัดใน fileแล้วก็ยัดใส่ ArrayList() ทีละตัว -> ["thanawat,12345", "somchai,abcde"]  , โดยอ่านเป็น UTF_8
     }
 
     // แปลง 1 บรรทัดที่เป็นข้อความ String ให้เป็น User ถ้าบรรทัดเสีย คืน null
@@ -85,6 +86,6 @@ public class CsvUserRepository implements UserRepository {
 
     // ตรวจ RI
     private void checkRep() {
-        assert file != null; // file ต้องมมีอยู่จริงง
+        assert file != null; // ตัวแปร file ต้องไม่เป็น null
     }
 }
