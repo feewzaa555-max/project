@@ -1,0 +1,13 @@
+# ไฟล์ที่ NetBeans / VS Code / Java สร้างเอง
+build/
+dist/
+out/
+bin/
+nbproject/private/
+.vscode/
+*.class
+
+# ข้อมูลที่โปรแกรมเขียนเองตอนทดสอบ (แต่ละคนมีของตัวเอง)
+Booking_tickets/data/users.csv
+Booking_tickets/data/accounts.csv
+Booking_tickets/data/bookings.csv
