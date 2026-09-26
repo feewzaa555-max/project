@@ -20,10 +20,10 @@ hasStarted(เวลาตอนนี้)	  true / false	                  ห�
 
 package model;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
+import java.time.LocalDate; //	วันที่อย่างเดียว ไม่มีเวลา เช่น 2026-09-26
+import java.time.LocalDateTime; //วันที่กับเวลารวมกัน เช่น 2026-09-26 10:00
+import java.time.LocalTime; //	เวลาอย่างเดียว ไม่มีวันที่ เช่น 10:00
+import java.time.format.DateTimeFormatter; //ตัวแปลงวันเวลาเป็นข้อความ -> 10:00 = "1000"
 
 /**
  * รอบฉาย 1 รอบ
@@ -38,10 +38,12 @@ import java.time.format.DateTimeFormatter;
 public record Showtime(Movie movie, int hall, LocalDate date, LocalTime start) {
 
     // AF: รอบฉายหนัง movie ที่โรง hall วันที่ date เริ่ม start จบ start + ความยาวหนัง
-    // RI: movie, date, start ไม่เป็น null, hall > 0, หนังต้องจบภายในวันเดียวกับที่เริ่ม (ไม่ข้ามเที่ยงคืน)
-    // Safety from rep exposure: record เป็น private final และ Movie / LocalDate / LocalTime แก้ไขไม่ได้
+    // RI: movie, date, start ไม่เป็น null, hall > 0, หนังต้องจบก่อนเที่ยงคืนของวันเดียวกัน (จบ 00:00 พอดีก็ไม่ได้)
+    // Safety from rep exposure: field ของ record เป็น private final และ Movie / LocalDate / LocalTime แก้ไขไม่ได้
 
-    private static final int MINUTES_PER_DAY = 24 * 60;
+    private static final int MINUTES_PER_HOUR = 60;
+    private static final int HOURS_PER_DAY = 24;
+    private static final int MINUTES_PER_DAY = HOURS_PER_DAY * MINUTES_PER_HOUR;
     private static final DateTimeFormatter ID_TIME_FORMAT = DateTimeFormatter.ofPattern("HHmm");
 
     /** ตรวจค่าตอนสร้าง ข้อมูลเสียจาก schedule.csv จะถูกจับได้ทันที (SC2 fail-fast) */
@@ -58,23 +60,37 @@ public record Showtime(Movie movie, int hall, LocalDate date, LocalTime start) {
         if (start == null) {
             throw new IllegalArgumentException("start must not be null");
         }
-        int startMinute = start.getHour() * 60 + start.getMinute();
+        int startMinute = start.getHour() * MINUTES_PER_HOUR + start.getMinute();
         if (startMinute + movie.durationMinutes() >= MINUTES_PER_DAY) {
             throw new IllegalArgumentException("showtime must end before midnight");
         }
     }
 
-    /** รหัสรอบ เช่น 2026-09-26_H1_1000 ใช้อ้างถึงรอบนี้ใน bookings.csv */
+    /**
+     * รหัสรอบ ใช้อ้างถึงรอบนี้ใน bookings.csv
+     *
+     * @return รหัสรูปแบบ วันที่_Hโรง_เวลาเริ่ม เช่น 2026-09-26_H1_1000
+     */
     public String id() {
         return date + "_H" + hall + "_" + start.format(ID_TIME_FORMAT);
     }
 
-    /** เวลาจบ = เวลาเริ่ม + ความยาวหนัง */
+    /**
+     * เวลาจบของรอบนี้
+     *
+     * @return เวลาเริ่ม + ความยาวหนัง เช่น เริ่ม 10:00 หนัง 130 นาที ได้ 12:10
+     */
     public LocalTime end() {
         return start.plusMinutes(movie.durationMinutes());
     }
 
-    /** true ถ้าถึงเวลาเริ่มแล้ว (หน้าจอใช้ทำปุ่มรอบเป็นสีเทา / ห้ามจอง) */
+    /**
+     * รอบนี้เริ่มฉายไปแล้วหรือยัง หน้าจอใช้ทำปุ่มรอบเป็นสีเทา / ห้ามจอง
+     *
+     * @param now เวลาปัจจุบัน ห้าม null
+     * @return true ถ้า now ถึงหรือเลยเวลาเริ่มแล้ว, false ถ้ายังไม่ถึง
+     * @throws IllegalArgumentException ถ้า now เป็น null
+     */
     public boolean hasStarted(LocalDateTime now) {
         if (now == null) {
             throw new IllegalArgumentException("now must not be null");
