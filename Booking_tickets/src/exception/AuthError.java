@@ -16,6 +16,7 @@ public enum AuthError {
     // ----- ช่องรหัส -----
     PASSWORD_EMPTY(AuthField.PASSWORD, "กรุณาใส่รหัส"),
     PASSWORD_TOO_SHORT(AuthField.PASSWORD, "รหัสควรยาวอย่างน้อย 5 ตัวอักษร"),
+    PASSWORD_INVALID_CHARS(AuthField.PASSWORD, "รหัสใช้ได้เฉพาะภาษาอังกฤษและตัวเลข"),
     PASSWORD_WRONG(AuthField.PASSWORD, "รหัสผ่านไม่ถูกต้อง");
 
     private final AuthField field;   // เอาไว้เช็กว่าจะขึ้นเตือนข้อความใต้ช่องไหน-> username หรือ password 

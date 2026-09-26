@@ -86,10 +86,7 @@ public class AuthService {
 
         // 1) รูปแบบถูกไหม ตรวจทั้ง 2 ช่องพร้อมกัน ช่องชื่อมีได้หลาย error
         List<AuthError> errors = new ArrayList<>(usernameFormatErrors(name)); //เอา name ไปเช็กใน usernameFormatErrors ว่ามี error อะไรต้องแจ้งไหม
-        AuthError passwordError = passwordFormatError(password); //รหัสไม่มีทางได้ error มากกว่า 1 -> (ว่าง หรือ พิมพ์สั้นกว่า 5 ตัว)
-        if (passwordError != null) {
-            errors.add(passwordError); // Add เข้า list errors
-        }
+        errors.addAll(passwordFormatErrors(password)); // เอา error ของรหัสมาต่อท้าย (ถ้าไม่มี error ก็ไม่ได้เพิ่มอะไร)
         if (!errors.isEmpty()) {
             throw new AuthFormException(errors); // ถ้าใน list errors มีข้อมูลที่ผิด -> ใส่ลง AuthFormException แล้วโยนไปให้หน้าจอ
         }
@@ -128,15 +125,23 @@ public class AuthService {
         return errors;
     }
 
-    // คืน error ข้อแรกที่เจอของช่องรหัส หรือ null ถ้าผ่าน
-    private AuthError passwordFormatError(String password) {
+       // คืน error ทุกข้อที่เจอของช่องรหัส ตามลำดับการตรวจ หรือ List ว่างถ้าผ่าน
+    private List<AuthError> passwordFormatErrors(String password) {
+        List<AuthError> errors = new ArrayList<>();
         if (password.isEmpty()) {
-            return AuthError.PASSWORD_EMPTY;
+            errors.add(AuthError.PASSWORD_EMPTY);
+            return errors;   // รหัสว่าง ข้ออื่นไม่มีความหมาย
         }
         if (password.length() < MIN_PASSWORD_LENGTH) {
-            return AuthError.PASSWORD_TOO_SHORT;
+            errors.add(AuthError.PASSWORD_TOO_SHORT);
         }
-        return null;
+        for (char c : password.toCharArray()) {
+            if (!isEnglishLetter(c) && !isDigit(c)) {
+                errors.add(AuthError.PASSWORD_INVALID_CHARS);
+                break;   // เจอตัวแรกพอ ไม่งั้นจะใส่ error เดิมซ้ำ
+            }
+        }
+        return errors;
     }
 
     // เช็กช่วงตรงๆ เพราะ Character.isLetter ยอมรับภาษาไทยด้วย
