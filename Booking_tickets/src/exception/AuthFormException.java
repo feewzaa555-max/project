@@ -29,7 +29,7 @@ public final class AuthFormException extends Exception {
 
         //[USERNAME_TOO_SHORT, USERNAME_INVALID_CHARS]
         if (list.isEmpty()) {
-            throw new IllegalArgumentException("ต้องมี error อย่างน้อย 1 ตัว");//ผ่าน
+            throw new IllegalArgumentException("ต้องมี error อย่างน้อย 1 ตัว");// List ว่าง = โปรแกรมเมอร์เรียกผิด
         }
         for (AuthError error : list) {
             if (!errors.containsKey(error.field())) { //ใน field มี error หรือยัง

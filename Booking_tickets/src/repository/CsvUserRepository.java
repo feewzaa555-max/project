@@ -1,6 +1,6 @@
 
 
-//CsvUserRepository <- เช็กข้อมูลที่อยู่ในไฟล์ CSV
+//CsvUserRepository <- อ่าน/เขียนข้อมูลผู้ใช้ในไฟล์ CSV (ไม่ได้ตรวจกฎ การตรวจอยู่ใน AuthService)
 
 package repository;
 

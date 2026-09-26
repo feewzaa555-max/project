@@ -1,18 +1,24 @@
 package model;
 
 /**
+ * 
  * ผู้ใช้ระบบ (ลูกค้า) — ชื่อผู้ใช้ไม่ซ้ำกันในระบบ จึงใช้เป็นตัวระบุคนแทน id
  *
  * เป็น record จึง immutable: field เป็น private final, ไม่มี setter,   <- กำหนดให้เมื่อสร้างรหัสแล้วไม่สามารถเปลี่ยนชื่อหรอเปลี่ยนรหัสได้
  * และได้ equals() / hashCode() ที่ถูกต้องจาก compiler (SC5)
  *
  * กฎรูปแบบชื่อ/รหัส (ยาวอย่างน้อย 5 ตัว, ขึ้นต้นภาษาอังกฤษ ฯลฯ) ไม่ได้เช็กที่นี่
- * แต่เช็กใน CredentialRules ตอน Sign up — คลาสนี้แค่เก็บข้อมูลที่ผ่านกฎแล้ว (SC5 SRP)
+ * แต่เช็กใน AuthService ตอน Sign up — คลาสนี้แค่เก็บข้อมูลที่ผ่านกฎแล้ว (SC5 SRP)
  *
  * @param username ชื่อผู้ใช้ ห้าม null ห้ามว่าง
  * @param password รหัสผ่าน ห้าม null
  */
 public record User(String username, String password) {
+
+    // AF: ผู้ใช้ 1 คนที่ชื่อ username และรหัส password
+    // RI: username ไม่เป็น null และไม่ว่าง, password ไม่เป็น null
+    // Safety from rep exposure: ข้างนอกแก้ชื่อและรหัสไม่ได้ เพราะ record เป็น private final และ String แก้ไขไม่ได้
+
 
     /** ตรวจค่าตอนสร้าง: ข้อมูลเสียจาก CSV จะถูกจับได้ทันที ไม่หลุดไปพังที่อื่น (SC2 fail-fast) */
     //ถ้ากฎของ Singup เช่นusername >= 5 อยู่ใน User แล้ววันหนึ่งเป็น >=6 ไอ่คนที่เขียน username ไว้ 5 ก็ซวย เปิด csv อ่าน ตอนเปิดโปรแกรม ระบบอ่าน users.csv เจอคนที่สมัครไว้ด้วยชื่อ 5 ตัว สร้าง User ไม่ผ่าน โปรแกรมพังตั้ง

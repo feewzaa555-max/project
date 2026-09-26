@@ -55,7 +55,7 @@ public class AuthService {
             errors.add(AuthError.PASSWORD_EMPTY);
         }
         if (!errors.isEmpty()) {
-            throw new AuthFormException(errors); // ได้ error แล้วส่งให้ Authformexception จัดการ //ถ้ายังไม่มี error ก็เช็ก error กรณีอื่นต่อ
+            throw new AuthFormException(errors); // ใส่ error ลง AuthFormException แล้วโยนไปให้หน้าจอ ถ้าไม่มี error ก็เช็กกรณีอื่นต่อ
         }
 
         // 2) เช็กว่ามี User นี้ในระบบไหม
@@ -91,7 +91,7 @@ public class AuthService {
             errors.add(passwordError); // Add เข้า list errors
         }
         if (!errors.isEmpty()) {
-            throw new AuthFormException(errors); // ถ้าใน list errors มีข้อมูลที่ผิด -> ส่งไปให้ authformexception 
+            throw new AuthFormException(errors); // ถ้าใน list errors มีข้อมูลที่ผิด -> ใส่ลง AuthFormException แล้วโยนไปให้หน้าจอ
         }
 
         // 2) ชื่อซ้ำไหม (ไม่สนตัวพิมพ์เล็ก/ใหญ่)
