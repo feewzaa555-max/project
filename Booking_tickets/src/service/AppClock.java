@@ -73,6 +73,14 @@ public class AppClock {
         //   Clock.fixed(จุดเวลา, zone)
         //       พารามิเตอร์ 1 = จุดเวลาที่ให้เข็มค้าง (27/9 18:00 เวลาไทย)
         //       พารามิเตอร์ 2 = โซนเวลาของนาฬิกา (Asia/Bangkok) เวลาอ่านออกมาจะได้เป็นเวลาไทย
+
+
+        /*
+            fixedNow เป็น LocalDateTime เช่น 2026-09-28T14:00 ยังไม่รู้ว่าเป็นเวลาของประเทศไหน
+            .atZone(zone) แปะ timezone ให้ เช่น Asia/Bangkok จะได้รู้ว่าเป็น 14:00 ที่ไทย
+        .   toInstant() แปลงเป็นจุดเวลาจริงบนโลก (เวลาสากล) ขั้นนี้ต้องทำเพราะ Clock.fixed รับแค่แบบนี้
+            Clock.fixed(..., zone) สร้างนาฬิกาที่ถามกี่ครั้งก็ตอบเวลาเดิมตลอด
+         */
         this.realClock = Clock.fixed(fixedNow.atZone(zone).toInstant(), zone);
         checkRep();
     }
