@@ -3,9 +3,13 @@ package gui;
 import exception.AuthField;
 import exception.AuthFormException;
 import model.User;
+import repository.CsvMovieRepository;
 import repository.CsvUserRepository;
+import repository.MovieRepository;
 import repository.UserRepository;
+import service.AppClock;
 import service.AuthService;
+import service.MovieService;
 
 import javax.swing.*;
 import javax.swing.border.CompoundBorder;
@@ -245,7 +249,8 @@ public class LoginFrame extends JFrame {
                         "Login successful!\nWelcome: " + user.username(),
                         "Success",
                         JOptionPane.INFORMATION_MESSAGE);
-                // ในระบบจริงจะเปิดหน้าต่างหลัก (Main Booking Dashboard) ต่อไปที่นี่
+                // เปิดหน้าต่างหลัก (MainFrame)
+                openMainDashboard(user);
             } else {
                 // เรียก Service ตรวจสอบ Sign up
                 User user = authService.register(username, password);
@@ -281,12 +286,34 @@ public class LoginFrame extends JFrame {
     }
 
     /**
-     * ค้นหาตำแหน่งไฟล์ users.csv โดยรองรับทั้งการรันจาก root directory และ
-     * subfolder
+     * เปิดหน้าต่างหลัก MainFrame เมื่อเข้าสู่ระบบสำเร็จ
      */
-    private static Path resolveDataPath() {
-        Path pathUnderSubfolder = Path.of("data", "users.csv");
-        Path pathFromRoot = Path.of("Booking_tickets", "data", "users.csv");
+    private void openMainDashboard(User user) {
+        try {
+            Path moviesPath = resolveDataPath("movies.csv");
+            Path schedulePath = resolveDataPath("schedule.csv");
+            MovieRepository movieRepo = new CsvMovieRepository(moviesPath, schedulePath);
+            AppClock clock = new AppClock();
+            MovieService movieService = new MovieService(movieRepo, clock);
+
+            MainFrame mainFrame = new MainFrame(user, movieService, authService);
+            mainFrame.setVisible(true);
+            this.dispose();
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "เกิดข้อผิดพลาดในการโหลดข้อมูลสำหรับหน้าหลัก: " + ex.getMessage(),
+                    "ข้อผิดพลาด",
+                    JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    /**
+     * ค้นหาตำแหน่งไฟล์ข้อมูล โดยรองรับทั้งการรันจาก root directory และ subfolder
+     */
+    public static Path resolveDataPath(String fileName) {
+        Path pathUnderSubfolder = Path.of("data", fileName);
+        Path pathFromRoot = Path.of("Booking_tickets", "data", fileName);
 
         if (Files.exists(pathFromRoot)) {
             return pathFromRoot;
@@ -299,6 +326,10 @@ public class LoginFrame extends JFrame {
             return pathFromRoot;
         }
         return pathUnderSubfolder;
+    }
+
+    private static Path resolveDataPath() {
+        return resolveDataPath("users.csv");
     }
 
     public static void main(String[] args) {
