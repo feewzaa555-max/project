@@ -7,7 +7,7 @@
     ตัวอย่างการใช้ (ใน AccountService ที่จะทำทีหลัง):
         AccountRepository accounts = new CsvAccountRepository(...);   // ตัวจริงเขียนลงไฟล์ accounts.csv
 
-        Account acc = accounts.findByUsername("somchai");  // ยังไม่เคยมีบัญชี → null
+        Account acc = accounts.findByUsername("somchai");  // สมัครแล้วแต่ยังไม่เคยเติมเงิน → ไม่มีแถวใน accounts.csv → null
         if (acc == null) {
             acc = Account.newFor("somchai");               // ถือว่าเงิน 0 ไม่เป็นสมาชิก
         }
@@ -43,10 +43,11 @@ public interface AccountRepository {
      *
      * ตัวอย่าง (accounts.csv มีแถว "somchai,500,"):
      *   findByUsername("somchai") → Account[somchai, 500, null]
-     *   findByUsername("nobody")  → null  (ยังไม่มีบัญชี ให้คนเรียกถือว่าเป็น Account.newFor("nobody"))
+     *   findByUsername("nok")     → null  (nok สมัครแล้วแต่ยังไม่เคยเติมเงินหรือสมัครสมาชิก เลยยังไม่มีแถว
+     *                                      คนเรียกถือว่าเป็น Account.newFor("nok") คือเงิน 0 ไม่เป็นสมาชิก)
      *
      * @param username ชื่อผู้ใช้ ห้าม null
-     * @return บัญชีของคนนี้ หรือ null ถ้ายังไม่มีบัญชี
+     * @return บัญชีของคนนี้ หรือ null ถ้าคนนี้ยังไม่เคยเติมเงินหรือสมัครสมาชิก (ยังไม่มีแถวของคนนี้)
      * @throws IOException ถ้าอ่านข้อมูลไม่ได้ หรือข้อมูลในที่เก็บผิดรูปแบบ
      * @throws IllegalArgumentException ถ้า username เป็น null
      */

@@ -39,7 +39,9 @@ import model.Account;                            // class บัญชี อย
  */
 public class CsvAccountRepository implements AccountRepository {
 
-    // AF: file คือไฟล์ CSV ที่แต่ละบรรทัดแทนบัญชี 1 คน ถ้ายังไม่มีไฟล์ แปลว่ายังไม่มีบัญชีเลย
+    // AF: file คือไฟล์ CSV ที่แต่ละบรรทัดคือเงินและสถานะสมาชิกของผู้ใช้ 1 คน (คนที่สมัครไว้ใน users.csv แล้ว)
+    //     ผู้ใช้ที่ไม่มีแถวในไฟล์ = สมัครแล้วแต่ยังไม่เคยเติมเงินหรือสมัครสมาชิก ถือว่าเงิน 0 ไม่เป็นสมาชิก
+    //     ยังไม่มีไฟล์เลย = ยังไม่มีใครเคยเติมเงินหรือสมัครสมาชิกเลยสักคน
     // RI: file ไม่เป็น null
     // Safety from rep exposure: file เป็น private final และ Path แก้ไขไม่ได้
     //                           Account ที่คืนออกไปเป็น record แก้ไม่ได้
@@ -103,7 +105,7 @@ public class CsvAccountRepository implements AccountRepository {
      *   findByUsername("thanawat") → Account[thanawat, 201, 2027-10-29T06:00]
      *   findByUsername("somchai")  → Account[somchai, 500, null]
      *   findByUsername("Somchai")  → null (ตัวพิมพ์ไม่ตรง)
-     *   findByUsername("nobody")   → null
+     *   findByUsername("nok")      → null (nok สมัครแล้วแต่ยังไม่เคยเติมเงิน เลยไม่มีแถว)
      *   ยังไม่มีไฟล์              → null ทุกชื่อ
      */
     @Override
@@ -192,7 +194,7 @@ public class CsvAccountRepository implements AccountRepository {
     /**
      * อ่านบัญชีทั้งหมดในไฟล์
      * วิธีทำงาน:
-     *   1. ยังไม่มีไฟล์ → คืนรายการว่าง [] (ยังไม่มีใครมีบัญชี)
+     *   1. ยังไม่มีไฟล์ → คืนรายการว่าง [] (ยังไม่มีใครเคยเติมเงินหรือสมัครสมาชิก)
      *   2. อ่านทุกบรรทัด นับเลขบรรทัดไปด้วย (นับบรรทัดว่างด้วย ให้ตรงกับเลขบรรทัดในไฟล์)
      *   3. บรรทัดว่างข้าม / บรรทัดอื่นแปลงเป็น Account ด้วย parseLine()
      *   4. ชื่อซ้ำกับบรรทัดก่อนหน้า → error (1 ชื่อต้องมีบัญชีเดียว ไม่งั้นไม่รู้ว่าเงินแถวไหนถูก)
