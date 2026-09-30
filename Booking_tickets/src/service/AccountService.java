@@ -6,6 +6,9 @@
     topUp(user, จำนวน)   → เติมเงิน แล้วบันทึกลงไฟล์ คืนบัญชีใหม่ให้หน้าจออัปเดตแถบบน
     subscribe(user)      → ตัดเงิน 99 บาท ต่อสมาชิก 30 วัน แล้วบันทึกลงไฟล์ คืนบัญชีใหม่
 
+    BookingService ใช้อีก 1 เมธอด:
+    pay(user, จำนวน)     → ตัดเงินค่าตั๋ว แล้วบันทึกลงไฟล์ คืนบัญชีใหม่
+
     ค่าคงที่ที่หน้าจอใช้ได้:
     AccountService.MEMBERSHIP_PRICE = 99   → ใช้เขียนในกล่องสมัคร "99 ฿ / 30 วัน" และคำนวณ "เหลือหลังสมัคร"
 
@@ -159,6 +162,33 @@ public class AccountService {
         Account updated = accountOf(user).topUp(amount);
         // accountRepository.save(updated)
         //   updated = บัญชีหลังเติม → เขียนทับแถวเดิม (หรือเพิ่มแถวใหม่ถ้ายังไม่มี)
+        accountRepository.save(updated);
+        return updated;
+    }
+
+    /**
+     * ตัดเงิน (ค่าตั๋ว) แล้วบันทึกลงไฟล์ BookingService เรียกตอนยืนยันการจอง
+     *
+     * วิธีทำงาน:
+     *   1. หาบัญชีด้วย accountOf()
+     *   2. ตัดเงินด้วย account.pay(amount) ได้บัญชีตัวใหม่ (เงินไม่พอ หรือ amount น้อยกว่า 1 → Account throw ตรงนี้ ไม่บันทึก)
+     *   3. บันทึกบัญชีตัวใหม่ลงไฟล์ แล้วคืนให้หน้าจออัปเดตยอดเงินที่แถบบน
+     *
+     * ตัวอย่าง:
+     *   somchai มี 500,  pay(somchai, 324) → Account[somchai, 176, ...]  แถว somchai เปลี่ยนเป็น 176
+     *   nok มี 100,      pay(nok, 160)     → throw "not enough balance: has 100, needs 160" ไฟล์ไม่เปลี่ยน
+     *
+     * @param user   ผู้ใช้ที่ login แล้ว ห้าม null
+     * @param amount จำนวนเงินที่ตัด ตั้งแต่ 1 และไม่เกินเงินที่มี
+     * @return บัญชีหลังตัดเงิน
+     * @throws IOException ถ้าอ่าน/เขียน accounts.csv ไม่ได้
+     * @throws IllegalArgumentException ถ้า user เป็น null, amount น้อยกว่า 1 หรือเงินไม่พอ
+     */
+    public Account pay(User user, int amount) throws IOException {
+        // accountOf(user).pay(amount)
+        //   accountOf(user) = บัญชีตอนนี้ เช่น Account[somchai, 500, null]
+        //   amount          = ค่าตั๋ว เช่น 324 → ได้ Account[somchai, 176, null]
+        Account updated = accountOf(user).pay(amount);
         accountRepository.save(updated);
         return updated;
     }
