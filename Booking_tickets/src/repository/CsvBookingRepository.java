@@ -1,22 +1,23 @@
 //CsvBookingRepository <- อ่าน/เขียนการจองในไฟล์ CSV (ไม่ได้ตรวจกฎการจอง การตรวจอยู่ใน Booking และ BookingService)
 /*
-    รูปแบบไฟล์ bookings.csv (ไม่มีบรรทัดหัวตาราง, บรรทัดละ 1 การจอง, 7 ช่อง):
-        รหัส,ชื่อผู้จอง,รหัสรอบ,ที่นั่ง,ราคารวม,สถานะ,เวลาที่จอง
-        B1,somchai,2026-10-01_H1_1000,A1;F7,324,PAID,2026-10-01T09:15
-        B2,nok,2026-10-01_H3_1345,C5,160,CANCELLED,2026-10-01T10:02
+    รูปแบบไฟล์ bookings.csv (ไม่มีบรรทัดหัวตาราง, บรรทัดละ 1 การจอง, 6 ช่อง):
+        รหัส,ชื่อผู้จอง,รหัสรอบ,ที่นั่ง,ราคารวม,เวลาที่จอง
+        B1,somchai,2026-10-01_H1_1000,A1;F7,324,2026-10-01T09:15
+        B2,nok,2026-10-01_H3_1345,C5,160,2026-10-01T10:02
 
     ช่องที่นั่งคั่นกันด้วย ; เพราะ , ใช้คั่นช่องไปแล้ว   A1;F7 = 2 ที่ (A1 กับ F7)
+    ทุกแถวคือการจองที่จ่ายแล้ว (ยกเลิกไม่ได้) จึงไม่มีช่องสถานะ
 
     มี 2 เมธอดตาม BookingRepository:
     findAll()      → อ่านทุกแถว แปลงเป็น Booking ยังไม่มีไฟล์คืน []
-    save(booking)  → อ่านทุกแถว เจอรหัสเดียวกันแทนที่ ไม่เจอต่อท้าย แล้วเขียนกลับทั้งไฟล์
+    save(booking)  → เพิ่มแถวใหม่ต่อท้าย (รหัสซ้ำกับที่มีอยู่แล้ว throw ไม่เขียน)
 
     ตัวอย่างการใช้:
         BookingRepository bookings = new CsvBookingRepository(Path.of("data", "bookings.csv"));
         bookings.findAll();          // ยังไม่มีไฟล์ → []
-        bookings.save(b1);           // สร้างไฟล์ → B1,somchai,2026-10-01_H1_1000,A1;F7,324,PAID,2026-10-01T09:15
-        bookings.save(b1.cancel());  // แทนที่แถว B1 → ...,CANCELLED,...
-        bookings.findAll();          // [B1 CANCELLED]
+        bookings.save(b1);           // สร้างไฟล์ → B1,somchai,2026-10-01_H1_1000,A1;F7,324,2026-10-01T09:15
+        bookings.save(b2);           // ต่อท้าย   → B2,nok,2026-10-01_H3_1345,C5,160,2026-10-01T10:02
+        bookings.findAll();          // [B1, B2]
 
     ยังไม่มีไฟล์ก็ได้ (ไฟล์นี้อยู่ใน .gitignore โปรแกรมเขียนเองตอนมีคนจองครั้งแรก) แบบเดียวกับ CsvAccountRepository
     ข้อมูลในไฟล์ผิดจะโยน IOException ที่บอกชื่อไฟล์และเลขบรรทัด แบบเดียวกับ CsvMovieRepository
@@ -33,15 +34,14 @@ import java.time.format.DateTimeParseException;  // error ตอนวันท�
 import java.util.ArrayList;                      // สร้างรายการใหม่ไว้ใส่การจอง / ที่นั่ง / บรรทัดที่จะเขียน
 import java.util.List;                           // ชนิดของรายการ
 import model.Booking;                            // class การจอง อยู่คนละ package เลยต้อง import
-import model.BookingStatus;                      // สถานะการจอง ใช้แปลงข้อความ "PAID" กลับเป็น BookingStatus.PAID
 
 /**
- * เก็บการจองในไฟล์ CSV บรรทัดละ 1 การจอง 7 ช่อง (ไม่มีบรรทัดหัวตาราง, บรรทัดว่างข้ามได้)
- * รหัส,ชื่อผู้จอง,รหัสรอบ,ที่นั่ง(คั่นด้วย ;),ราคารวม,สถานะ,เวลาที่จอง
+ * เก็บการจองในไฟล์ CSV บรรทัดละ 1 การจอง 6 ช่อง (ไม่มีบรรทัดหัวตาราง, บรรทัดว่างข้ามได้)
+ * รหัส,ชื่อผู้จอง,รหัสรอบ,ที่นั่ง(คั่นด้วย ;),ราคารวม,เวลาที่จอง
  */
 public class CsvBookingRepository implements BookingRepository {
 
-    // AF: file คือไฟล์ CSV ที่แต่ละบรรทัดคือการจอง 1 ครั้ง เรียงตามลำดับที่จอง
+    // AF: file คือไฟล์ CSV ที่แต่ละบรรทัดคือการจอง 1 ครั้ง (จ่ายแล้ว) เรียงตามลำดับที่จอง
     //     ยังไม่มีไฟล์ = ยังไม่มีใครจองเลย
     // RI: file ไม่เป็น null
     // Safety from rep exposure: file เป็น private final และ Path แก้ไขไม่ได้
@@ -51,8 +51,8 @@ public class CsvBookingRepository implements BookingRepository {
     //                (แบบเดียวกับ CsvAccountRepository)
 
     // ลำดับช่องใน bookings.csv (นับจาก 0)
-    //   B1 , somchai , 2026-10-01_H1_1000 , A1;F7 , 324 , PAID , 2026-10-01T09:15
-    //   0      1              2              3      4      5           6
+    //   B1 , somchai , 2026-10-01_H1_1000 , A1;F7 , 324 , 2026-10-01T09:15
+    //   0      1              2              3      4           5
     /** ช่องที่ 0 = รหัสการจอง */
     private static final int ID = 0;
     /** ช่องที่ 1 = ชื่อผู้จอง */
@@ -63,12 +63,10 @@ public class CsvBookingRepository implements BookingRepository {
     private static final int SEATS = 3;
     /** ช่องที่ 4 = ราคารวม */
     private static final int TOTAL_PRICE = 4;
-    /** ช่องที่ 5 = สถานะ */
-    private static final int STATUS = 5;
-    /** ช่องที่ 6 = เวลาที่จอง */
-    private static final int BOOKED_AT = 6;
+    /** ช่องที่ 5 = เวลาที่จอง */
+    private static final int BOOKED_AT = 5;
     /** 1 บรรทัดต้องมีกี่ช่อง */
-    private static final int COLUMNS = 7;
+    private static final int COLUMNS = 6;
 
     /** ตัวคั่นช่องในไฟล์ */
     private static final String SEPARATOR = ",";
@@ -124,10 +122,8 @@ public class CsvBookingRepository implements BookingRepository {
                 continue;
             }
             Booking booking = parseLine(line, lineNumber);
-            for (Booking existing : bookings) {
-                if (existing.id().equals(booking.id())) {
-                    throw error(lineNumber, "รหัสการจอง " + booking.id() + " ซ้ำกับบรรทัดก่อนหน้า");
-                }
+            if (findById(bookings, booking.id()) != null) {
+                throw error(lineNumber, "รหัสการจอง " + booking.id() + " ซ้ำกับบรรทัดก่อนหน้า");
             }
             bookings.add(booking);
         }
@@ -135,19 +131,20 @@ public class CsvBookingRepository implements BookingRepository {
     }
 
     /**
-     * บันทึกการจอง รหัสเดียวกันเขียนทับ ไม่มีเพิ่มท้าย
+     * เพิ่มการจองใหม่ต่อท้ายไฟล์
      *
      * วิธีทำงาน:
      *   1. booking เป็น null → throw
      *   2. ชื่อมี , → throw (ถ้าเขียนลงไฟล์ ช่องจะเลื่อน อ่านกลับไม่ได้)
      *   3. อ่านการจองทั้งหมดด้วย findAll()
-     *   4. ไล่หารหัสเดียวกัน เจอ → แทนที่ตำแหน่งนั้น / ไม่เจอ → ต่อท้าย
-     *   5. แปลงทุกการจองเป็นบรรทัดด้วย toLine() แล้วเขียนทับทั้งไฟล์ (ยังไม่มีโฟลเดอร์ก็สร้างให้)
+     *   4. รหัสซ้ำกับที่มีอยู่แล้ว → throw ไม่เขียน
+     *   5. ต่อท้ายรายการ แปลงทุกการจองเป็นบรรทัดด้วย toLine() แล้วเขียนทับทั้งไฟล์
+     *      (ยังไม่มีโฟลเดอร์ก็สร้างให้)
      *
      * ตัวอย่าง:
-     *   ไฟล์ก่อน:  B1,...,PAID,...
-     *   save(B2 PAID)       → ไฟล์หลัง: B1,...,PAID,...   B2,...,PAID,...        (ต่อท้าย)
-     *   save(B1 CANCELLED)  → ไฟล์หลัง: B1,...,CANCELLED,...   B2,...,PAID,...   (แทนที่ ยังมี 2 แถว)
+     *   ไฟล์ก่อน:  B1,...
+     *   save(B2)  → ไฟล์หลัง: B1,...   B2,...
+     *   save(B1)  → throw "duplicate booking id: B1" ไฟล์ไม่เปลี่ยน
      */
     @Override
     public void save(Booking booking) throws IOException {
@@ -159,24 +156,13 @@ public class CsvBookingRepository implements BookingRepository {
         }
 
         List<Booking> bookings = findAll();
-
-        // หาตำแหน่งการจองรหัสเดียวกัน
-        // bookings = [B1, B2]  save(B1 ยกเลิก) → i = 0 ตรง → set(0, ...) แทนที่
-        //                      save(B3)       → ไม่ตรงเลย → replaced ยังเป็น false → add ต่อท้าย
-        boolean replaced = false;
-        for (int i = 0; i < bookings.size(); i++) {
-            if (bookings.get(i).id().equals(booking.id())) {
-                // bookings.set(i, booking)
-                //   i       = ตำแหน่งที่เจอรหัสเดียวกัน เช่น 0
-                //   booking = การจองตัวใหม่ที่จะใส่แทน เช่น B1 ที่ยกเลิกแล้ว
-                bookings.set(i, booking);
-                replaced = true;
-                break; // เจอแล้วไม่ต้องหาต่อ (findAll ตรวจแล้วว่ารหัสไม่ซ้ำ)
-            }
+        // findById(bookings, booking.id())
+        //   bookings     = การจองที่มีอยู่แล้ว เช่น [B1, B2]
+        //   booking.id() = รหัสของการจองใหม่ เช่น "B3" → ไม่เจอ (null) → เพิ่มได้ / "B1" → เจอ → throw
+        if (findById(bookings, booking.id()) != null) {
+            throw new IllegalArgumentException("duplicate booking id: " + booking.id());
         }
-        if (!replaced) {
-            bookings.add(booking);
-        }
+        bookings.add(booking);
 
         List<String> lines = new ArrayList<>();
         for (Booking b : bookings) {
@@ -190,14 +176,32 @@ public class CsvBookingRepository implements BookingRepository {
         }
         // Files.write(file, lines, StandardCharsets.UTF_8)
         //   file  = ไฟล์ที่จะเขียน (ไม่มีก็สร้าง มีแล้วเขียนทับทั้งไฟล์)
-        //   lines = ทุกบรรทัด เช่น ["B1,somchai,2026-10-01_H1_1000,A1;F7,324,PAID,2026-10-01T09:15"]
+        //   lines = ทุกบรรทัด เช่น ["B1,somchai,2026-10-01_H1_1000,A1;F7,324,2026-10-01T09:15"]
         Files.write(file, lines, StandardCharsets.UTF_8);
     }
 
     /**
+     * หาการจองจากรหัส ไล่ทีละรายการ เจอคืนรายการนั้น ไม่เจอคืน null
+     * เช่น bookings = [B1, B2]  findById(bookings, "B2") → B2 / findById(bookings, "B9") → null
+     * ใช้ 2 ที่: findAll() เช็กรหัสซ้ำในไฟล์ / save() เช็กรหัสซ้ำก่อนเพิ่ม
+     *
+     * @param bookings รายการที่จะค้น
+     * @param id       รหัสที่หา เช่น "B2"
+     * @return การจองที่รหัสตรง หรือ null ถ้าไม่เจอ
+     */
+    private Booking findById(List<Booking> bookings, String id) {
+        for (Booking b : bookings) {
+            if (b.id().equals(id)) {
+                return b;
+            }
+        }
+        return null;
+    }
+
+    /**
      * แปลง 1 บรรทัดเป็น Booking
-     * เช่น "B1,somchai,2026-10-01_H1_1000,A1;F7,324,PAID,2026-10-01T09:15"
-     *      → Booking[B1, somchai, 2026-10-01_H1_1000, [A1, F7], 324, PAID, 2026-10-01T09:15]
+     * เช่น "B1,somchai,2026-10-01_H1_1000,A1;F7,324,2026-10-01T09:15"
+     *      → Booking[B1, somchai, 2026-10-01_H1_1000, [A1, F7], 324, 2026-10-01T09:15]
      *
      * @param line       ข้อความ 1 บรรทัดจากไฟล์
      * @param lineNumber เลขบรรทัดในไฟล์ ใช้บอกใน error เช่น 2
@@ -205,13 +209,13 @@ public class CsvBookingRepository implements BookingRepository {
      * @throws IOException ถ้าบรรทัดนี้ผิดรูปแบบ
      */
     private Booking parseLine(String line, int lineNumber) throws IOException {
-        // 1. ตัดตรง , → ["B1", "somchai", "2026-10-01_H1_1000", "A1;F7", "324", "PAID", "2026-10-01T09:15"]
+        // 1. ตัดตรง , → ["B1", "somchai", "2026-10-01_H1_1000", "A1;F7", "324", "2026-10-01T09:15"]
         //    ใช้ split(",") ธรรมดาได้ เพราะไฟล์นี้ไม่มีช่องไหนว่างได้ (ต่างจาก accounts.csv)
         String[] parts = line.split(SEPARATOR);
 
-        // 2. ต้องได้ครบ 7 ช่อง  "B1,somchai,..." ขาดช่องไหนไป → error
+        // 2. ต้องได้ครบ 6 ช่อง  ขาดช่องไหนไป → error
         if (parts.length != COLUMNS) {
-            throw error(lineNumber, "ต้องมี " + COLUMNS + " ช่อง คือ รหัส,ชื่อ,รหัสรอบ,ที่นั่ง,ราคา,สถานะ,เวลาที่จอง");
+            throw error(lineNumber, "ต้องมี " + COLUMNS + " ช่อง คือ รหัส,ชื่อ,รหัสรอบ,ที่นั่ง,ราคา,เวลาที่จอง");
         }
 
         // 3. ที่นั่ง "A1;F7" → ตัดตรง ; → ["A1", "F7"] → ตัดเว้นวรรคหน้าหลังทีละตัว
@@ -228,16 +232,7 @@ public class CsvBookingRepository implements BookingRepository {
             throw error(lineNumber, "ราคาต้องเป็นตัวเลข แต่เจอ " + parts[TOTAL_PRICE].trim());
         }
 
-        // 5. สถานะ "PAID" → BookingStatus.PAID
-        //    BookingStatus.valueOf("PAYED") หาไม่เจอ → IllegalArgumentException → error
-        BookingStatus status;
-        try {
-            status = BookingStatus.valueOf(parts[STATUS].trim());
-        } catch (IllegalArgumentException e) {
-            throw error(lineNumber, "สถานะต้องเป็น PAID หรือ CANCELLED แต่เจอ " + parts[STATUS].trim());
-        }
-
-        // 6. เวลาที่จอง "2026-10-01T09:15" → 1/10/2026 09:15  /  "1/10/2026" → error
+        // 5. เวลาที่จอง "2026-10-01T09:15" → 1/10/2026 09:15  /  "1/10/2026" → error
         LocalDateTime bookedAt;
         try {
             bookedAt = LocalDateTime.parse(parts[BOOKED_AT].trim());
@@ -245,12 +240,12 @@ public class CsvBookingRepository implements BookingRepository {
             throw error(lineNumber, "เวลาที่จองต้องเป็นแบบ yyyy-MM-ddTHH:mm เช่น 2026-10-01T09:15 แต่เจอ " + parts[BOOKED_AT].trim());
         }
 
-        // 7. สร้าง Booking กฎว่าค่าไหนผิด (ว่าง, ที่นั่งซ้ำ, ราคา <= 0) อยู่ใน Booking ที่เดียว
+        // 6. สร้าง Booking กฎว่าค่าไหนผิด (ว่าง, ที่นั่งซ้ำ, ราคา <= 0) อยู่ใน Booking ที่เดียว
         //    ถ้าผิด Booking โยน IllegalArgumentException → เปลี่ยนเป็น error ที่บอกไฟล์/บรรทัด
         //    "B1,somchai,...,A1;A1,..." บรรทัด 2 → "bookings.csv บรรทัด 2: duplicate seat: A1"
         try {
             return new Booking(parts[ID].trim(), parts[USERNAME].trim(), parts[SHOWTIME_ID].trim(),
-                    seatCodes, totalPrice, status, bookedAt);
+                    seatCodes, totalPrice, bookedAt);
         } catch (IllegalArgumentException e) {
             throw error(lineNumber, e.getMessage());
         }
@@ -258,8 +253,8 @@ public class CsvBookingRepository implements BookingRepository {
 
     /**
      * แปลง Booking เป็น 1 บรรทัดที่จะเขียนลงไฟล์ (กลับด้านกับ parseLine)
-     * Booking[B1, somchai, 2026-10-01_H1_1000, [A1, F7], 324, PAID, 2026-10-01T09:15]
-     *   → "B1,somchai,2026-10-01_H1_1000,A1;F7,324,PAID,2026-10-01T09:15"
+     * Booking[B1, somchai, 2026-10-01_H1_1000, [A1, F7], 324, 2026-10-01T09:15]
+     *   → "B1,somchai,2026-10-01_H1_1000,A1;F7,324,2026-10-01T09:15"
      *
      * @param booking การจองที่จะแปลง
      * @return ข้อความ 1 บรรทัด
@@ -269,13 +264,11 @@ public class CsvBookingRepository implements BookingRepository {
         //   SEAT_SEPARATOR       = ";" ตัวที่ใส่คั่นระหว่างที่นั่ง
         //   booking.seatCodes()  = ["A1", "F7"] → ได้ "A1;F7"
         String seats = String.join(SEAT_SEPARATOR, booking.seatCodes());
-        // status.name() = ชื่อภาษาอังกฤษ "PAID" (ไม่ใช้ displayName ภาษาไทย เพราะ valueOf อ่านกลับได้แค่ name)
         return booking.id() + SEPARATOR
                 + booking.username() + SEPARATOR
                 + booking.showtimeId() + SEPARATOR
                 + seats + SEPARATOR
                 + booking.totalPrice() + SEPARATOR
-                + booking.status().name() + SEPARATOR
                 + booking.bookedAt();
     }
 
