@@ -86,7 +86,7 @@ public class CsvMovieRepository implements MovieRepository {
             // หาในรายการที่ใส่ไปแล้ว: เจอ = รหัสซ้ำ (error) / ไม่เจอ (null) = ยังไม่มี ใส่ได้
             // เช่น movies = [M1, M2] แล้วบรรทัดนี้เป็น M1 อีก → เจอ → error
             if (findMovie(movies, movie.id()) != null) {
-                throw error(moviesFile, lineNumber, "รหัสหนัง " + movie.id() + " ซ้ำกับบรรทัดก่อนหน้า");
+                throw error(moviesFile, lineNumber, "Movie ID " + movie.id() + " is duplicate of previous line");
             }
             movies.add(movie);
         }
@@ -125,7 +125,7 @@ public class CsvMovieRepository implements MovieRepository {
             // toAbsolutePath() แปลง path สั้นเป็น path เต็มตั้งแต่ไดรฟ์
             // data\movies.csv → D:\6821651329\project\Booking_tickets\data\movies.csv
             // error จะบอกว่าโปรแกรมไปหาไฟล์ที่ไหน ถ้าหาผิดที่จะเห็นทันที
-            throw new IOException("ไม่พบไฟล์ " + file.toAbsolutePath());
+            throw new IOException("File not found: " + file.toAbsolutePath());
         }
         // ["M1,Spider-Man: Brand New Day,145,posters/m1.png", "M2,Pacific Rim,131,posters/m2.png", ...]
         return Files.readAllLines(file, StandardCharsets.UTF_8);
@@ -142,7 +142,7 @@ public class CsvMovieRepository implements MovieRepository {
         //    "M2,Pacific Rim,131,"            → 3 ช่อง error (ลืมใส่โปสเตอร์ split ทิ้งช่องว่างท้ายให้)
         if (parts.length != MOVIE_COLUMNS) {
             throw error(moviesFile, lineNumber,
-                    "ต้องมี " + MOVIE_COLUMNS + " ช่อง คือ รหัส,ชื่อ,ความยาวนาที,รูปโปสเตอร์");
+                    "Must have " + MOVIE_COLUMNS + " columns: id, title, durationMinutes, posterPath");
         }
 
         // 3. ความยาวในไฟล์เป็นข้อความ "131" ต้องแปลงเป็นตัวเลข 131 ก่อนส่งให้ Movie
@@ -152,7 +152,7 @@ public class CsvMovieRepository implements MovieRepository {
         try {
             duration = Integer.parseInt(parts[MOVIE_DURATION].trim());
         } catch (NumberFormatException e) {
-            throw error(moviesFile, lineNumber, "ความยาวหนังต้องเป็นตัวเลข แต่เจอ " + parts[MOVIE_DURATION].trim());
+            throw error(moviesFile, lineNumber, "Movie duration must be a number, but found " + parts[MOVIE_DURATION].trim());
         }
 
         // 4. สร้าง Movie กฎว่าค่าไหนผิด (รหัสว่าง, ชื่อว่าง, ความยาว <= 0) อยู่ใน Movie ที่เดียว
@@ -177,7 +177,7 @@ public class CsvMovieRepository implements MovieRepository {
         // 2. ต้องได้ครบ 3 ช่อง  "1,10:00" → 2 ช่อง error
         if (parts.length != SCHEDULE_COLUMNS) {
             throw error(scheduleFile, lineNumber,
-                    "ต้องมี " + SCHEDULE_COLUMNS + " ช่อง คือ โรง,เวลาเริ่ม,รหัสหนัง");
+                    "Must have " + SCHEDULE_COLUMNS + " columns: hall, startTime, movieId");
         }
 
         // 3. เลขโรง "1" → 1   /  "A" แปลงไม่ได้ → error
@@ -185,7 +185,7 @@ public class CsvMovieRepository implements MovieRepository {
         try {
             hall = Integer.parseInt(parts[SCHEDULE_HALL].trim());
         } catch (NumberFormatException e) {
-            throw error(scheduleFile, lineNumber, "เลขโรงต้องเป็นตัวเลข แต่เจอ " + parts[SCHEDULE_HALL].trim());
+            throw error(scheduleFile, lineNumber, "Hall number must be a number, but found " + parts[SCHEDULE_HALL].trim());
         }
 
         // 4. เวลาเริ่ม "10:00" → เวลา 10:00  /  "9:00" (ชั่วโมงหลักเดียว) แปลงไม่ได้ → error ต้องเขียน "09:00"
@@ -194,7 +194,7 @@ public class CsvMovieRepository implements MovieRepository {
             start = LocalTime.parse(parts[SCHEDULE_START].trim());
         } catch (DateTimeParseException e) {
             throw error(scheduleFile, lineNumber,
-                    "เวลาเริ่มต้องเป็นแบบ HH:mm เช่น 09:30 แต่เจอ " + parts[SCHEDULE_START].trim());
+                    "Start time must be in HH:mm format e.g. 09:30, but found " + parts[SCHEDULE_START].trim());
         }
 
         // 5. หาว่ารหัสหนังคือเรื่องไหน "M1" → Spider-Man: Brand New Day
@@ -202,7 +202,7 @@ public class CsvMovieRepository implements MovieRepository {
         String movieId = parts[SCHEDULE_MOVIE_ID].trim();
         Movie movie = findMovie(movies, movieId);
         if (movie == null) {
-            throw error(scheduleFile, lineNumber, "ไม่มีหนังรหัส " + movieId + " ใน " + moviesFile.getFileName());
+            throw error(scheduleFile, lineNumber, "No movie with ID " + movieId + " in " + moviesFile.getFileName());
         }
 
         // 6. สร้าง Showtime กฎว่ารอบไหนผิด (โรง <= 0, ข้ามเที่ยงคืน) อยู่ใน Showtime ที่เดียว
@@ -233,7 +233,7 @@ public class CsvMovieRepository implements MovieRepository {
     //   → "movies.csv บรรทัด 3: ความยาวหนังต้องเป็นตัวเลข แต่เจอ 13O"
     // หน้า GUI catch IOException แล้วเอา getMessage() ไปโชว์ในกล่องแจ้งเตือน (แบบ LoginFrame)
     private IOException error(Path file, int lineNumber, String reason) {
-        return new IOException(file.getFileName() + " บรรทัด " + lineNumber + ": " + reason);
+        return new IOException(file.getFileName() + " line " + lineNumber + ": " + reason);
     }
 
     // ตรวจ RI

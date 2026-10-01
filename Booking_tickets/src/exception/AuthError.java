@@ -6,18 +6,18 @@ package exception;
  */
 public enum AuthError {
     // ----- ช่องชื่อ -----
-    USERNAME_EMPTY(AuthField.USERNAME, "กรุณาใส่ชื่อ"),
-    USERNAME_TOO_SHORT(AuthField.USERNAME, "ชื่อควรยาวอย่างน้อย 5 ตัวอักษร"),
-    USERNAME_FIRST_NOT_LETTER(AuthField.USERNAME, "ตัวอักษรตัวแรกต้องเป็นภาษาอังกฤษ"),
-    USERNAME_INVALID_CHARS(AuthField.USERNAME, "ชื่อใช้ได้เฉพาะภาษาอังกฤษและตัวเลข"),
-    USERNAME_TAKEN(AuthField.USERNAME, "ชื่อนี้ถูกใช้แล้ว"),
-    USERNAME_NOT_FOUND(AuthField.USERNAME, "ไม่พบชื่อผู้ใช้นี้ กรุณา Sign up"),
+    USERNAME_EMPTY(AuthField.USERNAME, "Please enter username"),
+    USERNAME_TOO_SHORT(AuthField.USERNAME, "Username must be at least 5 characters"),
+    USERNAME_FIRST_NOT_LETTER(AuthField.USERNAME, "First character must be an English letter"),
+    USERNAME_INVALID_CHARS(AuthField.USERNAME, "Username can only contain English letters and numbers"),
+    USERNAME_TAKEN(AuthField.USERNAME, "This username is already taken"),
+    USERNAME_NOT_FOUND(AuthField.USERNAME, "Username not found, please sign up"),
 
     // ----- ช่องรหัส -----
-    PASSWORD_EMPTY(AuthField.PASSWORD, "กรุณาใส่รหัส"),
-    PASSWORD_TOO_SHORT(AuthField.PASSWORD, "รหัสควรยาวอย่างน้อย 5 ตัวอักษร"),
-    PASSWORD_INVALID_CHARS(AuthField.PASSWORD, "รหัสใช้ได้เฉพาะภาษาอังกฤษและตัวเลข"),
-    PASSWORD_WRONG(AuthField.PASSWORD, "รหัสผ่านไม่ถูกต้อง");
+    PASSWORD_EMPTY(AuthField.PASSWORD, "Please enter password"),
+    PASSWORD_TOO_SHORT(AuthField.PASSWORD, "Password must be at least 5 characters"),
+    PASSWORD_INVALID_CHARS(AuthField.PASSWORD, "Password can only contain English letters and numbers"),
+    PASSWORD_WRONG(AuthField.PASSWORD, "Incorrect password");
 
     private final AuthField field;   // เอาไว้เช็กว่าจะขึ้นเตือนข้อความใต้ช่องไหน-> username หรือ password 
     private final String message;    // ข้อความที่แสดงบนหน้าจอ

@@ -29,7 +29,7 @@ public final class AuthFormException extends Exception {
 
         //[USERNAME_TOO_SHORT, USERNAME_INVALID_CHARS]
         if (list.isEmpty()) {
-            throw new IllegalArgumentException("ต้องมี error อย่างน้อย 1 ตัว");// List ว่าง = โปรแกรมเมอร์เรียกผิด
+            throw new IllegalArgumentException("Must have at least 1 error");// List ว่าง = โปรแกรมเมอร์เรียกผิด
         }
         for (AuthError error : list) {
             if (!errors.containsKey(error.field())) { //ใน field มี error หรือยัง
@@ -39,7 +39,7 @@ public final class AuthFormException extends Exception {
             List<AuthError> fieldErrors = errors.get(error.field()); // error.field() ได้key errors.get(key) ได้ value ซึ่งก็คือ new ArrayList<>()
             //หยิบ list จาก field ตัวเองมาเช็กว่าซ้ำกับ error ไหม
             if (fieldErrors.contains(error)) { //เช็กว่า list ของ field นั้นมี error ซ้ำไหม
-                throw new IllegalArgumentException(error + " ซ้ำ"); //ถ้าซ้ำถือว่าไม่ปกติ
+                throw new IllegalArgumentException(error + " is duplicated"); //ถ้าซ้ำถือว่าไม่ปกติ
             }
             fieldErrors.add(error); //นำ error ยัดใส่ใน list 
         }

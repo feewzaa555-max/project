@@ -23,12 +23,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
+import service.AppServices;
+
 /**
  * หน้าต่าง GUI สำหรับ Login / Sign up ของระบบจองตั๋ว (Booking Tickets)
  * ทำงานร่วมกับ AuthService, UserRepository, AuthField และ AuthFormException
  */
 public class LoginFrame extends JFrame {
 
+    private final AppServices appServices;
     private final AuthService authService;
     private boolean isLoginMode = true; // true = Login, false = Sign up
 
@@ -42,13 +45,20 @@ public class LoginFrame extends JFrame {
     private JButton submitButton;
     private JButton toggleModeButton;
 
+    public LoginFrame(AppServices appServices) {
+        this.appServices = appServices;
+        this.authService = (appServices != null) ? appServices.auth() : null;
+        initUI();
+    }
+
     public LoginFrame(AuthService authService) {
+        this.appServices = null;
         this.authService = authService;
         initUI();
     }
 
     private void initUI() {
-        setTitle("ระบบจองตั๋ว - เข้าสู่ระบบ");
+        setTitle("Booking Tickets - Sign In");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(440, 560);
         setLocationRelativeTo(null);
@@ -75,12 +85,12 @@ public class LoginFrame extends JFrame {
         Font fontButton = new Font("Tahoma", Font.BOLD, 14);
 
         // --- Header Section ---
-        titleLabel = new JLabel("เข้าสู่ระบบ");
+        titleLabel = new JLabel("Sign In");
         titleLabel.setFont(fontHeader);
         titleLabel.setForeground(new Color(17, 24, 39));
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        subtitleLabel = new JLabel("ยินดีต้อนรับสู่ระบบจองตั๋ว Booking Tickets");
+        subtitleLabel = new JLabel("Welcome to Booking Tickets system");
         subtitleLabel.setFont(fontSubtitle);
         subtitleLabel.setForeground(new Color(107, 114, 128));
         subtitleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -91,7 +101,7 @@ public class LoginFrame extends JFrame {
         cardPanel.add(Box.createRigidArea(new Dimension(0, 24)));
 
         // --- Username Section ---
-        JLabel userLabel = new JLabel("ชื่อผู้ใช้ (Username)");
+        JLabel userLabel = new JLabel("Username");
         userLabel.setFont(fontLabel);
         userLabel.setForeground(new Color(55, 65, 81));
         userLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -119,7 +129,7 @@ public class LoginFrame extends JFrame {
         cardPanel.add(Box.createRigidArea(new Dimension(0, 14)));
 
         // --- Password Section ---
-        JLabel passLabel = new JLabel("รหัสผ่าน (Password)");
+        JLabel passLabel = new JLabel("Password");
         passLabel.setFont(fontLabel);
         passLabel.setForeground(new Color(55, 65, 81));
         passLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -149,7 +159,7 @@ public class LoginFrame extends JFrame {
         cardPanel.add(Box.createRigidArea(new Dimension(0, 20)));
 
         // --- Submit Button ---
-        submitButton = new JButton("เข้าสู่ระบบ");
+        submitButton = new JButton("Sign In");
         submitButton.setFont(fontButton);
         submitButton.setForeground(Color.BLACK);
         submitButton.setBackground(new Color(37, 99, 235)); // Blue
@@ -165,7 +175,7 @@ public class LoginFrame extends JFrame {
 
         // --- Mode Toggle Button ---
         toggleModeButton = new JButton(
-                "<html>ยังไม่มีบัญชีใช่หรือไม่? <font color='#2563EB'><b>สมัครสมาชิก</b></font></html>");
+                "<html>Don't have an account? <font color='#2563EB'><b>Sign Up</b></font></html>");
         toggleModeButton.setFont(fontSubtitle);
         toggleModeButton.setForeground(new Color(75, 85, 99));
         toggleModeButton.setBorderPainted(false);
@@ -203,21 +213,21 @@ public class LoginFrame extends JFrame {
         clearErrors();
 
         if (isLoginMode) {
-            setTitle("ระบบจองตั๋ว - เข้าสู่ระบบ");
-            titleLabel.setText("เข้าสู่ระบบ");
-            subtitleLabel.setText("ยินดีต้อนรับสู่ระบบจองตั๋ว Booking Tickets");
-            submitButton.setText("เข้าสู่ระบบ");
+            setTitle("Booking Tickets - Sign In");
+            titleLabel.setText("Sign In");
+            subtitleLabel.setText("Welcome to Booking Tickets system");
+            submitButton.setText("Sign In");
             submitButton.setBackground(new Color(37, 99, 235));
             toggleModeButton
-                    .setText("<html>ยังไม่มีบัญชีใช่หรือไม่? <font color='#2563EB'><b>สมัครสมาชิก</b></font></html>");
+                    .setText("<html>Don't have an account? <font color='#2563EB'><b>Sign Up</b></font></html>");
         } else {
-            setTitle("ระบบจองตั๋ว - สมัครสมาชิก");
-            titleLabel.setText("สมัครสมาชิกใหม่");
-            subtitleLabel.setText("สร้างบัญชีเพื่อเริ่มต้นจองตั๋วเดินทาง");
-            submitButton.setText("สร้างบัญชีผู้ใช้");
+            setTitle("Booking Tickets - Sign Up");
+            titleLabel.setText("Sign Up");
+            subtitleLabel.setText("Create an account to start booking tickets");
+            submitButton.setText("Create Account");
             submitButton.setBackground(new Color(16, 185, 129)); // Green
             toggleModeButton
-                    .setText("<html>มีบัญชีอยู่แล้วใช่หรือไม่? <font color='#10B981'><b>เข้าสู่ระบบ</b></font></html>");
+                    .setText("<html>Already have an account? <font color='#10B981'><b>Sign In</b></font></html>");
         }
     }
 
@@ -279,8 +289,8 @@ public class LoginFrame extends JFrame {
         } catch (IOException ex) {
             JOptionPane.showMessageDialog(
                     this,
-                    "เกิดข้อผิดพลาดในการเชื่อมต่อไฟล์ข้อมูล: " + ex.getMessage(),
-                    "ข้อผิดพลาดระบบ",
+                    "An error occurred connecting to data files: " + ex.getMessage(),
+                    "System Error",
                     JOptionPane.ERROR_MESSAGE);
         }
     }
@@ -290,20 +300,15 @@ public class LoginFrame extends JFrame {
      */
     private void openMainDashboard(User user) {
         try {
-            Path moviesPath = resolveDataPath("movies.csv");
-            Path schedulePath = resolveDataPath("schedule.csv");
-            MovieRepository movieRepo = new CsvMovieRepository(moviesPath, schedulePath);
-            AppClock clock = new AppClock();
-            MovieService movieService = new MovieService(movieRepo, clock);
-
-            MainFrame mainFrame = new MainFrame(user, movieService, authService);
+            AppServices services = (this.appServices != null) ? this.appServices : AppServices.create();
+            MainFrame mainFrame = new MainFrame(user, services);
             mainFrame.setVisible(true);
             this.dispose();
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(
                     this,
-                    "เกิดข้อผิดพลาดในการโหลดข้อมูลสำหรับหน้าหลัก: " + ex.getMessage(),
-                    "ข้อผิดพลาด",
+                    "Error loading data for main screen: " + ex.getMessage(),
+                    "Error",
                     JOptionPane.ERROR_MESSAGE);
         }
     }
@@ -339,14 +344,10 @@ public class LoginFrame extends JFrame {
         } catch (Exception ignored) {
         }
 
-        // เตรียม Repository และ Service
-        Path csvPath = resolveDataPath();
-        UserRepository userRepository = new CsvUserRepository(csvPath);
-        AuthService authService = new AuthService(userRepository);
-
         // เปิดหน้าต่าง GUI
         SwingUtilities.invokeLater(() -> {
-            LoginFrame frame = new LoginFrame(authService);
+            AppServices appServices = AppServices.create();
+            LoginFrame frame = new LoginFrame(appServices);
             frame.setVisible(true);
         });
     }
