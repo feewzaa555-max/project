@@ -111,7 +111,7 @@ public class CsvBookingRepository implements BookingRepository {
     @Override
     public List<Booking> findAll() throws IOException {
         List<Booking> bookings = new ArrayList<>();
-        if (!Files.exists(file)) {
+        if (!Files.exists(file)) { //// ถ้ายังไม่มีไฟล์ให้คืน bookings (คืน list ว่าง)
             return bookings;
         }
         List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
