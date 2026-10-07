@@ -34,7 +34,8 @@ public class CsvUserRepository implements UserRepository {
     private static final int NAME = 0;       // ช่องที่ 1 = ชื่อ
     private static final int PASSWORD = 1;   // ช่องที่ 2 = รหัส
     private static final int ROLE = 2;       // ช่องที่ 3 = บทบาท
-    private static final int MAX_COLUMNS = 3; // แยกได้มากสุด 3 ช่อง
+    private static final int MIN_COLUMNS = 2; // อย่างน้อยต้องมี 2 ช่อง (ชื่อ, รหัส)
+    private static final int MAX_COLUMNS = 3; // แยกได้มากสุด 3 ช่อง (ชื่อ, รหัส, บทบาท)
 
     // AF: file คือไฟล์ CSV ที่แต่ละบรรทัดแทนผู้ใช้ 1 คน ถ้ายังไม่มีไฟล์ แปลว่ายังไม่มีผู้ใช้
     // RI: file ไม่เป็น null
@@ -134,12 +135,14 @@ public class CsvUserRepository implements UserRepository {
         // line.split(",", MAX_COLUMNS) : แยกด้วย , ได้มากสุด 3 ช่อง
         //   เช่น "admin,admin1,ADMIN" → ["admin", "admin1", "ADMIN"]
         String[] parts = line.split(",", MAX_COLUMNS);
-        if (parts.length <= PASSWORD || parts[NAME].isBlank()) {  //<-ชื่อ = ป้ายชื่อของคน ทั้งระบบใช้ชื่อบอกว่าเป็นใคร ทั้งตอนหาใน CSV และตอนจองตั๋ว ถ้าชื่อว่าง ระบบจะไม่รู้ว่าเป็นใคร จึงห้ามว่างเด็ดขาด
-                                                                  // parts.length <= PASSWORD คือมีไม่ถึง 2 ช่อง กันไว้เพราะถ้าบรรทัดนั้นไม่มี "," จะได้แค่ 1 ชิ้น แล้วพอเรียก parts[1] จะพัง
+        // parts.length = จำนวนช่องที่แยกได้ (ได้ "มากสุด" 3 ไม่ใช่ได้ 3 เสมอ ขึ้นกับว่ามี , กี่ตัว)
+        //   "admin,admin1,ADMIN" → 3 ช่อง / "somchai,abcde" → 2 ช่อง / "nopassword" หรือบรรทัดว่าง → 1 ช่อง
+        if (parts.length < MIN_COLUMNS || parts[NAME].isBlank()) {  //<-ชื่อ = ป้ายชื่อของคน ทั้งระบบใช้ชื่อบอกว่าเป็นใคร ทั้งตอนหาใน CSV และตอนจองตั๋ว ถ้าชื่อว่าง ระบบจะไม่รู้ว่าเป็นใคร จึงห้ามว่างเด็ดขาด
+                                                                    // parts.length < MIN_COLUMNS คือมีไม่ถึง 2 ช่อง กันไว้เพราะถ้าบรรทัดนั้นไม่มี "," จะได้แค่ 1 ชิ้น แล้วพอเรียก parts[1] จะพัง
             return null; //ที่ไม่มี parts[1].isBlank()   <-รหัส = กุญแจ มีไว้เทียบตอน Login อย่างเดียว ถ้าว่างก็แค่ Login ไม่ผ่าน ระบบไม่พัง ส่วนเรื่องห้ามรหัสว่าง AuthService คอยเช็กให้ตอนสมัครอยู่แล้ว
         }
-        if (parts.length <= ROLE) {
-            // แถวแบบเก่ามีแค่ชื่อกับรหัส → new User(ชื่อ, รหัส) ได้ USER
+        if (parts.length < MAX_COLUMNS) {
+            // มี 2 ช่อง = แถวแบบเก่ามีแค่ชื่อกับรหัส → new User(ชื่อ, รหัส) ได้ USER
             return new User(parts[NAME], parts[PASSWORD]);
         }
         Role role;
