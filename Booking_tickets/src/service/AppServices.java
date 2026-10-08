@@ -8,11 +8,12 @@
       ไฟล์นี้จึงสร้างทุกอย่าง "ครั้งเดียว" ตอนเปิดโปรแกรม แล้วส่งตัว app นี้ต่อกันไปทุกหน้าจอ
       ทุกหน้าจอเลยใช้นาฬิกาตัวเดียวกัน และอ่าน/เขียนไฟล์ชุดเดียวกัน
 
-    หน้าจอหยิบของได้ 6 อย่าง:
+    หน้าจอหยิบของได้ 7 อย่าง:
       auth()      → AuthService     ใช้ในหน้า Login / สมัคร
       movies()    → MovieService    ใช้ในหน้าเลือกหนัง (หนัง, รอบ, รอบไหนยังจองได้)
       accounts()  → AccountService  ใช้แสดงเงินคงเหลือ, เติมเงิน, สมัครสมาชิก
       bookings()  → BookingService  ใช้ในหน้าเลือกที่นั่ง (ที่นั่งถูกจอง, ยอดเงิน, กดจอง) และหน้าประวัติ
+      admin()     → AdminService    ใช้ในหน้า admin (เลือกหนัง 5 เรื่องที่จะฉายพรุ่งนี้)
       layout()    → HallLayout      ใช้วาดผังที่นั่ง (แถว A–F, ทางเดินหลังที่นั่งเลข 5)
       clock()     → AppClock        ใช้ปุ่มตั้งเวลา / รีเซ็ตเวลาตอน demo (ทุกหน้าเห็นเวลาเดียวกัน)
 
@@ -55,7 +56,7 @@ public final class AppServices {
 
     // AF: ชุดของหลังบ้านของโปรแกรม 1 ชุด ที่อ่าน/เขียนไฟล์ในโฟลเดอร์ data เดียวกัน และใช้นาฬิกา clock ตัวเดียวกัน
     // RI: ทุก field ไม่เป็น null
-    //     movies, accounts, bookings ใช้ clock ตัวเดียวกันกับ field clock
+    //     movies, accounts, bookings, admin ใช้ clock ตัวเดียวกันกับ field clock
     // Safety from rep exposure: field เป็น private final ไม่มีเมธอดเปลี่ยน field
     //     เมธอดคืน service ตัวจริงออกไปโดยตั้งใจ เพื่อให้ทุกหน้าจอใช้ตัวเดียวกัน
     //     (ถ้าคืนตัวสำเนา นาฬิกาแต่ละหน้าจะไม่ตรงกัน ซึ่งเป็นปัญหาที่ไฟล์นี้มีไว้แก้)
@@ -91,6 +92,8 @@ public final class AppServices {
     private final AccountService accounts;
     /** บริการจองตั๋ว */
     private final BookingService bookings;
+    /** บริการของ admin: ตั้งหนังที่จะฉายพรุ่งนี้ */
+    private final AdminService admin;
 
     /**
      * สร้างของหลังบ้านทุกตัวจากโฟลเดอร์ data ที่ให้มา
@@ -121,8 +124,10 @@ public final class AppServices {
         //     เช่น Booking_tickets/data + "users.csv" → Booking_tickets/data/users.csv
         this.auth = new AuthService(new CsvUserRepository(dataFolder.resolve(USERS_FILE)));
 
-        // ตัวอ่านหนัง สร้างตัวเดียวแล้วใช้ร่วมกัน 2 ที่ ได้แก่ MovieService (ใช้ทำหน้าเลือกหนัง) กับ BookingService (ใช้ทำหน้าประวัติการจอง)
+        // ตัวอ่านหนัง สร้างตัวเดียวแล้วใช้ร่วมกัน 3 ที่
         //   MovieService ใช้ทำหน้าเลือกหนัง / BookingService ใช้หารอบของตั๋วในหน้าประวัติ
+        //   AdminService ใช้บันทึกหนังที่จะฉายพรุ่งนี้ลง lineup.csv
+        //   ใช้ตัวเดียวกัน เพราะ admin บันทึกแล้ว หน้าลูกค้าต้องอ่านจากไฟล์เดียวกันถึงจะเห็นชุดใหม่
         // new CsvMovieRepository(ไฟล์หนัง, ไฟล์ตารางฉาย, ไฟล์หนังที่ฉายแต่ละวัน)
         //   เช่น data/movies.csv, data/schedule.csv, data/lineup.csv
         MovieRepository movieRepository = new CsvMovieRepository(dataFolder.resolve(MOVIES_FILE),
@@ -146,6 +151,10 @@ public final class AppServices {
         //   clock                         = นาฬิกาตัวเดียวกัน ไว้เช็กว่ารอบเริ่มไปแล้วหรือยัง
         this.bookings = new BookingService(new CsvBookingRepository(dataFolder.resolve(BOOKINGS_FILE)),
                 movieRepository, accounts, new PriceCalculator(), layout, clock);
+
+        // บริการของ admin (หน้า admin เลือกหนัง 5 เรื่องที่จะฉายพรุ่งนี้)
+        // new AdminService(ตัวอ่านหนังตัวเดียวกับข้างบน, นาฬิกาตัวเดียวกัน ไว้รู้ว่าพรุ่งนี้คือวันไหน)
+        this.admin = new AdminService(movieRepository, clock);
 
         checkRep();
     }
@@ -268,10 +277,21 @@ public final class AppServices {
     }
 
     /**
+     * บริการของ admin ให้หน้า admin ใช้ตั้งหนังที่จะฉายพรุ่งนี้
+     * เช่น app.admin().setTomorrowLineup(admin, หนัง 5 เรื่อง) → บันทึกลง lineup.csv เป็นวันพรุ่งนี้
+     *      app.admin().tomorrowLineup()                     → หนัง 5 เรื่องที่ตั้งไว้ให้พรุ่งนี้
+     *
+     * @return AdminService ที่ใช้ตัวอ่านหนังและนาฬิกาตัวเดียวกับ MovieService (ตั้งแล้วหน้าลูกค้าเห็นชุดเดียวกัน)
+     */
+    public AdminService admin() {
+        return admin;
+    }
+
+    /**
      * ตรวจ RI ว่าของทุกตัวถูกสร้างครบ ไม่มีตัวไหนเป็น null (SC4) ทำงานเมื่อรันด้วย -ea
      */
     private void checkRep() {
         assert clock != null && layout != null;
-        assert auth != null && movies != null && accounts != null && bookings != null;
+        assert auth != null && movies != null && accounts != null && bookings != null && admin != null;
     }
 }
