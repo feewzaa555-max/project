@@ -184,6 +184,7 @@ public class BookingService {
      * วิธีทำงาน:
      *   1. user / showtime / seats เป็น null → throw
      *   2. รอบเริ่มไปแล้ว → throw "รอบนี้เริ่มฉายไปแล้ว จองไม่ได้"
+     *   2.1 รอบไม่ใช่ของวันนี้ (เช่น รอบพรุ่งนี้) → throw "จองได้แค่รอบของวันนี้" (อาจารย์ไม่ให้จองล่วงหน้า)
      *   3. ไม่ได้เลือกที่นั่ง → throw "กรุณาเลือกที่นั่งอย่างน้อย 1 ที่"
      *   4. ไล่ทีละที่นั่ง: ต้องมีอยู่จริงในผังโรง และไม่เลือกซ้ำ (ราคาคิดจากที่นั่งตัวจริงในผังโรง)
      *   5. เทียบกับ bookedSeats() ถ้ามีที่นั่งไหนถูกจองแล้ว → throw "ที่นั่ง F7 ถูกจองไปแล้ว"
@@ -200,6 +201,7 @@ public class BookingService {
      *   nok เลือก [F7] รอบเดียวกัน             → throw "ที่นั่ง F7 ถูกจองไปแล้ว"
      *   nok มี 100 เลือก [C5] (160 บาท)        → throw "เงินไม่พอ มี 100 บาท ต้องจ่าย 160 บาท"
      *   ตอนนี้ 10:00 จองรอบ 10:00              → throw "รอบนี้เริ่มฉายไปแล้ว จองไม่ได้"
+     *   ตอนนี้ 1/10 จองรอบ 2/10 10:00          → throw "จองได้แค่รอบของวันนี้"
      *   เลือก [A1, A1]                         → throw "เลือกที่นั่ง A1 ซ้ำ"
      *
      * @param user     ผู้ใช้ที่ login แล้ว ห้าม null
@@ -219,6 +221,15 @@ public class BookingService {
         if (showtime.hasStarted(clock.now())) {
             throw new IllegalArgumentException("This showtime has already started. Booking unavailable.");
         }
+        // 2.1 จองได้แค่รอบของวันนี้ เพราะอาจารย์ไม่ให้จองล่วงหน้า
+        //   ข้อ 2 กันได้แค่รอบที่เริ่มไปแล้ว ส่วนรอบของพรุ่งนี้ยังไม่เริ่ม เลยต้องเช็กวันแยกตรงนี้
+        //   กฎอยู่ที่ book() เลย จะได้ไม่ต้องพึ่งหน้าจอว่ามีปุ่มแค่วันนี้
+        //   showtime.date()           = วันฉายของรอบที่จะจอง เช่น 2026-10-09
+        //   clock.now().toLocalDate() = วันนี้ของโปรแกรม เช่น 2026-10-08
+        //   สองวันไม่ตรงกัน → รอบนี้ไม่ใช่ของวันนี้ → จองไม่ได้
+        if (!showtime.date().equals(clock.now().toLocalDate())) {
+            throw new IllegalArgumentException("You can only book showtimes for today.");
+        }
         // 3.
         if (seats.isEmpty()) {
             throw new IllegalArgumentException("Please select at least 1 seat.");
@@ -237,6 +248,7 @@ public class BookingService {
             //                 "G3" → ไม่มีในผังโรง HallLayout throw "no such seat: G3"
             Seat real = hallLayout.findSeat(seat.code());
             // chosen.add(...) คืน false ถ้ามีรหัสนี้อยู่แล้ว = เลือกซ้ำ
+            // กันการจองที่นั่งเดิม 2 ครั้ง F7 F7 -> throw
             if (!chosen.add(real.code())) {
                 throw new IllegalArgumentException("Duplicate seat selected: " + real.code());
             }
@@ -314,6 +326,8 @@ public class BookingService {
     }
 
     /**
+     * 
+     * ลูปเทียบรหัสรอบในตารางฉายกับรหัสรอบในตั๋ว เพื่อหาหนัง/วัน/เวลา/โรงของการจองใบนั้น และ return null เมื่อไม่เจอ
      * รอบจริงของการจอง ใช้โชว์ชื่อหนัง วัน เวลา โรง ในหน้าประวัติ
      *
      * วิธีทำงาน:
