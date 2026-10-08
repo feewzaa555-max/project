@@ -165,7 +165,7 @@ public class AdminService {
      *
      * @return วันพรุ่งนี้
      */
-    private LocalDate tomorrow() {
+    public LocalDate tomorrow() {
         // clock.now().toLocalDate() : วันนี้ เช่น 2026-10-08 / .plusDays(1) : บวก 1 วัน → 2026-10-09
         return clock.now().toLocalDate().plusDays(1);
     }
