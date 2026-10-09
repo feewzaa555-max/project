@@ -2,6 +2,7 @@ package gui;
 
 import exception.AuthField;
 import exception.AuthFormException;
+import gui.admin.AdminFrame;
 import model.User;
 import repository.CsvMovieRepository;
 import repository.CsvUserRepository;
@@ -296,13 +297,18 @@ public class LoginFrame extends JFrame {
     }
 
     /**
-     * เปิดหน้าต่างหลัก MainFrame เมื่อเข้าสู่ระบบสำเร็จ
+     * เปิดหน้าต่างหลัก MainFrame หรือ AdminFrame เมื่อเข้าสู่ระบบสำเร็จ
      */
     private void openMainDashboard(User user) {
         try {
             AppServices services = (this.appServices != null) ? this.appServices : AppServices.create();
-            MainFrame mainFrame = new MainFrame(user, services);
-            mainFrame.setVisible(true);
+            if (user.isAdmin()) {
+                AdminFrame adminFrame = new AdminFrame(user, services);
+                adminFrame.setVisible(true);
+            } else {
+                MainFrame mainFrame = new MainFrame(user, services);
+                mainFrame.setVisible(true);
+            }
             this.dispose();
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(

@@ -13,6 +13,7 @@ import service.AppServices;
 import service.BookingService;
 import service.PriceCalculator;
 
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
@@ -20,7 +21,10 @@ import javax.swing.border.LineBorder;
 import javax.swing.border.MatteBorder;
 import java.awt.*;
 import java.awt.geom.RoundRectangle2D;
+import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -252,6 +256,22 @@ public class SeatFrame extends JFrame {
                 new EmptyBorder(10, 16, 10, 16)));
 
         Movie m = showtime.movie();
+        if (m != null && m.posterPath() != null && !m.posterPath().isBlank()) {
+            Path p = MainFrame.resolveDataPath(m.posterPath());
+            if (Files.exists(p)) {
+                try {
+                    BufferedImage img = ImageIO.read(p.toFile());
+                    if (img != null) {
+                        Image scaled = img.getScaledInstance(45, 60, Image.SCALE_SMOOTH);
+                        JLabel posterLbl = new JLabel(new ImageIcon(scaled));
+                        posterLbl.setBorder(new LineBorder(COLOR_CARD_BORDER, 1, true));
+                        banner.add(posterLbl, BorderLayout.WEST);
+                    }
+                } catch (Exception ignored) {
+                }
+            }
+        }
+
         String title = (m != null) ? m.title() : "Movie";
         int duration = (m != null) ? m.durationMinutes() : 0;
         String dateStr = showtime.date().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
