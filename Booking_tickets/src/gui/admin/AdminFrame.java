@@ -27,7 +27,7 @@
 
 package gui.admin;
 
-import gui.LoginFrame;        // กด Logout แล้วกลับไปหน้านี้ (อยู่คนละ package เลยต้อง import)
+import gui.login.LoginFrame;  // หน้า Login ตัวใหม่ (โฟลเดอร์ gui/login) กด Logout แล้วกลับไปหน้านี้ อยู่คนละ package เลยต้อง import
 import java.awt.*;            // BorderLayout = แบ่งบน/กลาง, GridBagLayout = วางการ์ดไว้กลางจอ
 import javax.swing.*;         // JFrame = หน้าต่าง, JPanel = กล่อง, JOptionPane = กล่องถามยืนยัน Logout
 import model.User;            // admin ที่ login อยู่
@@ -39,7 +39,7 @@ public final class AdminFrame extends JFrame {
 
     /**
      * เปิดหน้า admin
-     * public เพราะ LoginFrame (อยู่ package gui ไม่ใช่ gui.admin) ต้อง new หน้านี้
+     * public เพราะ LoginFrame (อยู่ package gui.login ไม่ใช่ gui.admin) ต้อง new หน้านี้
      *
      * @param admin    คนที่ login แล้ว ห้าม null และต้องเป็น ADMIN
      * @param services ของหลังบ้านชุดเดียวกับทั้งโปรแกรม ห้าม null
