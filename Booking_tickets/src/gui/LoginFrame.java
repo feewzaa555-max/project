@@ -2,14 +2,8 @@ package gui;
 
 import exception.AuthField;
 import exception.AuthFormException;
-import model.User;
-import repository.CsvMovieRepository;
-import repository.CsvUserRepository;
-import repository.MovieRepository;
-import repository.UserRepository;
-import service.AppClock;
+import service.AppServices;
 import service.AuthService;
-import service.MovieService;
 
 import javax.swing.*;
 import javax.swing.border.CompoundBorder;
@@ -18,42 +12,37 @@ import javax.swing.border.LineBorder;
 import java.awt.*;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
-
-import service.AppServices;
 
 /**
  * หน้าต่าง GUI สำหรับ Login / Sign up ของระบบจองตั๋ว (Booking Tickets)
- * ทำงานร่วมกับ AuthService, UserRepository, AuthField และ AuthFormException
+ * ทำหน้าที่เป็น View หลักในการจัดวางหน้าจอ และส่งต่อ Action ให้กับ LoginController
  */
 public class LoginFrame extends JFrame {
 
-    private final AppServices appServices;
-    private final AuthService authService;
+    private final LoginController controller;
     private boolean isLoginMode = true; // true = Login, false = Sign up
 
     // UI Components
     private JLabel titleLabel;
     private JLabel subtitleLabel;
-    private JTextField usernameField;
-    private JPasswordField passwordField;
-    private JLabel usernameErrorLabel;
-    private JLabel passwordErrorLabel;
+    private AuthInputField usernameField;
+    private AuthInputField passwordField;
     private JButton submitButton;
     private JButton toggleModeButton;
 
+    public LoginFrame() {
+        this(AppServices.create());
+    }
+
     public LoginFrame(AppServices appServices) {
-        this.appServices = appServices;
-        this.authService = (appServices != null) ? appServices.auth() : null;
+        this.controller = new LoginController(this, appServices);
         initUI();
     }
 
     public LoginFrame(AuthService authService) {
-        this.appServices = null;
-        this.authService = authService;
+        this.controller = new LoginController(this, authService);
         initUI();
     }
 
@@ -79,9 +68,6 @@ public class LoginFrame extends JFrame {
 
         Font fontHeader = new Font("Tahoma", Font.BOLD, 20);
         Font fontSubtitle = new Font("Tahoma", Font.PLAIN, 12);
-        Font fontLabel = new Font("Tahoma", Font.BOLD, 12);
-        Font fontInput = new Font("Tahoma", Font.PLAIN, 13);
-        Font fontError = new Font("Tahoma", Font.PLAIN, 11);
         Font fontButton = new Font("Tahoma", Font.BOLD, 14);
 
         // --- Header Section ---
@@ -100,62 +86,14 @@ public class LoginFrame extends JFrame {
         cardPanel.add(subtitleLabel);
         cardPanel.add(Box.createRigidArea(new Dimension(0, 24)));
 
-        // --- Username Section ---
-        JLabel userLabel = new JLabel("Username");
-        userLabel.setFont(fontLabel);
-        userLabel.setForeground(new Color(55, 65, 81));
-        userLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        usernameField = new JTextField();
-        usernameField.setFont(fontInput);
-        usernameField.setPreferredSize(new Dimension(320, 36));
-        usernameField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
-        usernameField.setAlignmentX(Component.CENTER_ALIGNMENT);
-        usernameField.setBorder(new CompoundBorder(
-                new LineBorder(new Color(209, 213, 219), 1, true),
-                new EmptyBorder(6, 10, 6, 10)));
-
-        usernameErrorLabel = new JLabel("");
-        usernameErrorLabel.setFont(fontError);
-        usernameErrorLabel.setForeground(new Color(220, 38, 38));
-        usernameErrorLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        usernameErrorLabel.setVisible(false);
-
-        cardPanel.add(userLabel);
-        cardPanel.add(Box.createRigidArea(new Dimension(0, 6)));
+        // --- Username Section (AuthInputField) ---
+        usernameField = new AuthInputField("Username", false);
         cardPanel.add(usernameField);
-        cardPanel.add(Box.createRigidArea(new Dimension(0, 3)));
-        cardPanel.add(usernameErrorLabel);
         cardPanel.add(Box.createRigidArea(new Dimension(0, 14)));
 
-        // --- Password Section ---
-        JLabel passLabel = new JLabel("Password");
-        passLabel.setFont(fontLabel);
-        passLabel.setForeground(new Color(55, 65, 81));
-        passLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        passwordField = new JPasswordField();
-        passwordField.setFont(fontInput);
-        passwordField.setPreferredSize(new Dimension(320, 36));
-        passwordField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
-        passwordField.setAlignmentX(Component.CENTER_ALIGNMENT);
-        passwordField.setBorder(new CompoundBorder(
-                new LineBorder(new Color(209, 213, 219), 1, true),
-                new EmptyBorder(6, 10, 6, 10)));
-
-        passwordErrorLabel = new JLabel("");
-        passwordErrorLabel.setFont(fontError);
-        passwordErrorLabel.setForeground(new Color(220, 38, 38));
-        passwordErrorLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        passwordErrorLabel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 60));
-        passwordErrorLabel.setHorizontalAlignment(SwingConstants.LEFT);
-        passwordErrorLabel.setVisible(false);
-
-        cardPanel.add(passLabel);
-        cardPanel.add(Box.createRigidArea(new Dimension(0, 6)));
+        // --- Password Section (AuthInputField) ---
+        passwordField = new AuthInputField("Password", true);
         cardPanel.add(passwordField);
-        cardPanel.add(Box.createRigidArea(new Dimension(0, 3)));
-        cardPanel.add(passwordErrorLabel);
         cardPanel.add(Box.createRigidArea(new Dimension(0, 20)));
 
         // --- Submit Button ---
@@ -208,7 +146,7 @@ public class LoginFrame extends JFrame {
     /**
      * สลับโหมดระหว่าง Login และ Sign up
      */
-    private void toggleMode() {
+    public void toggleMode() {
         isLoginMode = !isLoginMode;
         clearErrors();
 
@@ -234,83 +172,32 @@ public class LoginFrame extends JFrame {
     /**
      * ล้างข้อความ Error ทั้งหมดบนหน้าจอ
      */
-    private void clearErrors() {
-        usernameErrorLabel.setText("");
-        usernameErrorLabel.setVisible(false);
-        passwordErrorLabel.setText("");
-        passwordErrorLabel.setVisible(false);
+    public void clearErrors() {
+        usernameField.clearError();
+        passwordField.clearError();
     }
 
     /**
-     * ดำเนินการส่งข้อมูลฟอร์มไปยัง AuthService
+     * แสดงข้อความ Error ตามที่ AuthFormException ระบุ
+     */
+    public void displayFormErrors(AuthFormException ex) {
+        usernameField.setErrors(ex.messagesFor(AuthField.USERNAME));
+        passwordField.setErrors(ex.messagesFor(AuthField.PASSWORD));
+    }
+
+    /**
+     * ทำงานหลังจากสมัครสมาชิกสำเร็จ
+     */
+    public void onRegisterSuccess() {
+        toggleMode();
+        passwordField.clear();
+    }
+
+    /**
+     * ดำเนินการส่งข้อมูลฟอร์มไปยัง Controller
      */
     private void handleSubmit() {
-        clearErrors();
-
-        String username = usernameField.getText();
-        String password = new String(passwordField.getPassword());
-
-        try {
-            if (isLoginMode) {
-                // เรียก Service ตรวจสอบ Login
-                User user = authService.login(username, password);
-                JOptionPane.showMessageDialog(
-                        this,
-                        "Login successful!\nWelcome: " + user.username(),
-                        "Success",
-                        JOptionPane.INFORMATION_MESSAGE);
-                // เปิดหน้าต่างหลัก (MainFrame)
-                openMainDashboard(user);
-            } else {
-                // เรียก Service ตรวจสอบ Sign up
-                User user = authService.register(username, password);
-                JOptionPane.showMessageDialog(
-                        this,
-                        "Registration successful!\nUsername: " + user.username() + "\nPlease log in to use the service",
-                        "Registration successful",
-                        JOptionPane.INFORMATION_MESSAGE);
-                // สลับกลับมาหน้า Login ให้อัตโนมัติ พร้อมคง username ไว้
-                toggleMode();
-                passwordField.setText("");
-            }
-        } catch (AuthFormException ex) {
-            // ดึงข้อความแจ้งเตือนตาม Field ที่ AuthFormException เตรียมไว้
-            List<String> usernameErrors = ex.messagesFor(AuthField.USERNAME);
-            if (!usernameErrors.isEmpty()) {
-                usernameErrorLabel.setText("<html>• " + String.join("<br>• ", usernameErrors) + "</html>");
-                usernameErrorLabel.setVisible(true);
-            }
-
-            List<String> passwordErrors = ex.messagesFor(AuthField.PASSWORD);
-            if (!passwordErrors.isEmpty()) {
-                passwordErrorLabel.setText("<html>• " + String.join("<br>• ", passwordErrors) + "</html>");
-                passwordErrorLabel.setVisible(true);
-            }
-        } catch (IOException ex) {
-            JOptionPane.showMessageDialog(
-                    this,
-                    "An error occurred connecting to data files: " + ex.getMessage(),
-                    "System Error",
-                    JOptionPane.ERROR_MESSAGE);
-        }
-    }
-
-    /**
-     * เปิดหน้าต่างหลัก MainFrame เมื่อเข้าสู่ระบบสำเร็จ
-     */
-    private void openMainDashboard(User user) {
-        try {
-            AppServices services = (this.appServices != null) ? this.appServices : AppServices.create();
-            MainFrame mainFrame = new MainFrame(user, services);
-            mainFrame.setVisible(true);
-            this.dispose();
-        } catch (Exception ex) {
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Error loading data for main screen: " + ex.getMessage(),
-                    "Error",
-                    JOptionPane.ERROR_MESSAGE);
-        }
+        controller.handleSubmit(isLoginMode, usernameField.getText(), passwordField.getText());
     }
 
     /**
@@ -326,15 +213,10 @@ public class LoginFrame extends JFrame {
         if (Files.exists(pathUnderSubfolder)) {
             return pathUnderSubfolder;
         }
-        // ถ้ายังไม่มีไฟล์ ให้ดูว่ารันจากโฟลเดอร์ไหน
         if (Files.exists(Path.of("Booking_tickets"))) {
             return pathFromRoot;
         }
         return pathUnderSubfolder;
-    }
-
-    private static Path resolveDataPath() {
-        return resolveDataPath("users.csv");
     }
 
     public static void main(String[] args) {

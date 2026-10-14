@@ -1,32 +1,20 @@
 package gui;
 
 import model.Account;
-import model.Booking;
 import model.Movie;
 import model.Showtime;
 import model.User;
-import repository.CsvMovieRepository;
-import repository.CsvUserRepository;
-import repository.MovieRepository;
-import repository.UserRepository;
 import service.AccountService;
-import service.AppClock;
 import service.AppServices;
 import service.AuthService;
 import service.BookingService;
 import service.MovieService;
 
-import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
-import javax.swing.border.MatteBorder;
 import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.awt.geom.RoundRectangle2D;
-import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -37,11 +25,31 @@ import java.util.List;
 
 /**
  * หน้าต่างหลัก GUI สำหรับเลือกรอบภาพยนตร์ (Main Dashboard)
- * มีแถบด้านบน (Top Bar) แสดงชื่อ KU CINEMA ทางซ้ายสุด
- * และทางขวาสุดแสดง: ชื่อผู้ใช้, ปุ่มสมัครสมาชิก, เงินคงเหลือ, ปุ่มเติมเงิน, ประวัติ, ปุ่มlogout เรียงตามลำดับ
+ * ทำหน้าที่เชื่อมโยงระหว่างข้อมูลภาพยนตร์, รอบฉาย, และคอมโพเนนต์ย่อยต่างๆ:
+ * - MainTopBar: แถบเมนูด้านบน
+ * - MovieCard / PosterBox: การ์ดแสดงภาพยนตร์
+ * - MembershipDialog: หน้าต่างจัดการสมาชิก
+ * - TopUpDialog: หน้าต่างเติมเงิน
+ * - HistoryDialog: หน้าต่างประวัติการจอง
  */
 public class MainFrame extends JFrame {
 
+    // --- สีและฟอนต์มาตรฐานของระบบ ---
+    public static final Color COLOR_PRIMARY = new Color(37, 99, 235);      // Blue #2563EB
+    public static final Color COLOR_BG = new Color(245, 247, 250);          // Gray #F5F7FA
+    public static final Color COLOR_CARD_BORDER = new Color(229, 231, 235); // Border #E5E7EB
+    public static final Color COLOR_INPUT_BORDER = new Color(209, 213, 219);// Border #D1D5DB
+    public static final Color COLOR_TEXT_TITLE = new Color(17, 24, 39);     // Dark #111827
+    public static final Color COLOR_TEXT_LABEL = new Color(55, 65, 81);     // Dark #374151
+    public static final Color COLOR_TEXT_MUTED = new Color(107, 114, 128);  // Muted #6B7280
+
+    public static final Font FONT_HEADER = new Font("Tahoma", Font.BOLD, 20);
+    public static final Font FONT_SUBTITLE = new Font("Tahoma", Font.PLAIN, 12);
+    public static final Font FONT_LABEL = new Font("Tahoma", Font.BOLD, 12);
+    public static final Font FONT_TEXT = new Font("Tahoma", Font.PLAIN, 13);
+    public static final Font FONT_SMALL = new Font("Tahoma", Font.PLAIN, 11);
+
+    // --- Services และข้อมูล ---
     private final User currentUser;
     private final AppServices appServices;
     private final MovieService movieService;
@@ -49,40 +57,21 @@ public class MainFrame extends JFrame {
     private final AccountService accountService;
     private final BookingService bookingService;
 
-    // ข้อมูลภาพยนตร์และวันที่จากระบบหลังบ้าน
     private List<Movie> movieList = new ArrayList<>();
     private List<LocalDate> bookableDates = new ArrayList<>();
 
-    // สถานะที่เลือกในปัจจุบัน
+    // --- สถานะที่เลือกในปัจจุบัน ---
     private LocalDate selectedDate;
     private Movie selectedMovie;
-    private int carouselStartIndex = 0; // ลำดับภาพยนตร์ตัวแรกใน 3 เรื่องที่มองเห็น
+    private int carouselStartIndex = 0;
 
-    // UI Components แถบบน (Top Bar)
-    private JLabel balanceLabel;
-    private JButton membershipButton;
-
-    // UI Components เนื้อหาการ์ด
+    // --- UI Components ---
+    private MainTopBar topBar;
     private JPanel dateButtonsPanel;
     private JPanel moviesPanel;
     private JPanel dotsPanel;
     private JLabel showtimesSectionLabel;
     private JPanel showtimesListPanel;
-
-    // สีและฟอนต์มาตรฐานชุดเดียวกับ LoginFrame
-    private static final Color COLOR_PRIMARY = new Color(37, 99, 235);      // Blue #2563EB
-    private static final Color COLOR_BG = new Color(245, 247, 250);          // Gray #F5F7FA
-    private static final Color COLOR_CARD_BORDER = new Color(229, 231, 235); // Border #E5E7EB
-    private static final Color COLOR_INPUT_BORDER = new Color(209, 213, 219);// Border #D1D5DB
-    private static final Color COLOR_TEXT_TITLE = new Color(17, 24, 39);     // Dark #111827
-    private static final Color COLOR_TEXT_LABEL = new Color(55, 65, 81);     // Dark #374151
-    private static final Color COLOR_TEXT_MUTED = new Color(107, 114, 128);  // Muted #6B7280
-
-    private final Font fontHeader = new Font("Tahoma", Font.BOLD, 20);
-    private final Font fontSubtitle = new Font("Tahoma", Font.PLAIN, 12);
-    private final Font fontLabel = new Font("Tahoma", Font.BOLD, 12);
-    private final Font fontText = new Font("Tahoma", Font.PLAIN, 13);
-    private final Font fontSmall = new Font("Tahoma", Font.PLAIN, 11);
 
     public MainFrame(User user, AppServices appServices) {
         this.currentUser = (user != null) ? user : new User("thanawat", "password123");
@@ -153,7 +142,7 @@ public class MainFrame extends JFrame {
     }
 
     /**
-     * สร้างหน้าจอหลักพร้อมแถบด้านบน (Top Bar) และการ์ดเนื้อหาตรงกลาง
+     * ประกอบหน้าจอหลักด้วยการ์ดเนื้อหาตรงกลางและแถบด้านบน
      */
     private void initUI() {
         setTitle("KU CINEMA - Movie Ticket Booking");
@@ -166,8 +155,15 @@ public class MainFrame extends JFrame {
         JPanel rootPanel = new JPanel(new BorderLayout());
         rootPanel.setBackground(COLOR_BG);
 
-        // 1. แถบด้านบน (Top Bar)
-        rootPanel.add(createTopBar(), BorderLayout.NORTH);
+        // 1. แถบด้านบน (MainTopBar)
+        topBar = new MainTopBar(
+                currentUser,
+                this::showMembershipDialog,
+                this::showTopUpDialog,
+                this::showHistoryDialog,
+                this::handleLogout
+        );
+        rootPanel.add(topBar, BorderLayout.NORTH);
 
         // 2. พื้นที่ตรงกลาง (Main Content Panel)
         JPanel mainPanel = new JPanel(new BorderLayout());
@@ -184,12 +180,12 @@ public class MainFrame extends JFrame {
 
         // --- ส่วนหัว (Header Section) ---
         JLabel titleLabel = new JLabel("Select Showtime");
-        titleLabel.setFont(fontHeader);
+        titleLabel.setFont(FONT_HEADER);
         titleLabel.setForeground(COLOR_TEXT_TITLE);
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         JLabel subtitleLabel = new JLabel("Welcome " + currentUser.username() + " | Please select a movie and showtime");
-        subtitleLabel.setFont(fontSubtitle);
+        subtitleLabel.setFont(FONT_SUBTITLE);
         subtitleLabel.setForeground(COLOR_TEXT_MUTED);
         subtitleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
@@ -200,7 +196,7 @@ public class MainFrame extends JFrame {
 
         // --- ส่วนที่ 1: เลือกวันที่ (Date Section) ---
         JLabel dateSectionLabel = new JLabel("1. Date");
-        dateSectionLabel.setFont(fontLabel);
+        dateSectionLabel.setFont(FONT_LABEL);
         dateSectionLabel.setForeground(COLOR_TEXT_LABEL);
         dateSectionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         cardPanel.add(dateSectionLabel);
@@ -215,7 +211,7 @@ public class MainFrame extends JFrame {
 
         // --- ส่วนที่ 2: เลือกภาพยนตร์ (Movie Section) ---
         JLabel movieSectionLabel = new JLabel("2. Movie");
-        movieSectionLabel.setFont(fontLabel);
+        movieSectionLabel.setFont(FONT_LABEL);
         movieSectionLabel.setForeground(COLOR_TEXT_LABEL);
         movieSectionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         cardPanel.add(movieSectionLabel);
@@ -256,13 +252,12 @@ public class MainFrame extends JFrame {
 
         // --- ส่วนที่ 3: เลือกรอบฉาย (Showtimes Section) ---
         showtimesSectionLabel = new JLabel("3. Showtimes");
-        showtimesSectionLabel.setFont(fontLabel);
+        showtimesSectionLabel.setFont(FONT_LABEL);
         showtimesSectionLabel.setForeground(COLOR_TEXT_LABEL);
         showtimesSectionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         cardPanel.add(showtimesSectionLabel);
         cardPanel.add(Box.createRigidArea(new Dimension(0, 6)));
 
-        // แถวแสดงปุ่มรอบฉาย
         showtimesListPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
         showtimesListPanel.setOpaque(false);
         showtimesListPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -272,7 +267,7 @@ public class MainFrame extends JFrame {
         cardPanel.add(Box.createRigidArea(new Dimension(0, 4)));
 
         JLabel guideLabel = new JLabel("← Click on a showtime to select seats");
-        guideLabel.setFont(fontSmall);
+        guideLabel.setFont(FONT_SMALL);
         guideLabel.setForeground(COLOR_TEXT_MUTED);
         guideLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         cardPanel.add(guideLabel);
@@ -289,536 +284,61 @@ public class MainFrame extends JFrame {
     }
 
     /**
-     * สร้างแถบด้านบน (Top Bar):
-     * ซ้ายสุด: KU CINEMA
-     * นอกนั้นชิดขวา:
-     *   1. ชื่อผู้ใช้
-     *   2. ปุ่มสมัครสมาชิก
-     *   3. เงินคงเหลือ
-     *   4. ปุ่มเติมเงิน
-     *   5. ประวัติ
-     *   6. ปุ่มlogout
-     * เรียงตามลำดับ
-     */
-    private JPanel createTopBar() {
-        JPanel topBar = new JPanel(new BorderLayout());
-        topBar.setBackground(Color.WHITE);
-        topBar.setBorder(new CompoundBorder(
-                new MatteBorder(0, 0, 1, 0, COLOR_CARD_BORDER),
-                new EmptyBorder(10, 20, 10, 20)));
-
-        // ซ้ายสุด: KU CINEMA
-        JLabel brandLabel = new JLabel("KU CINEMA");
-        brandLabel.setFont(new Font("Tahoma", Font.BOLD, 18));
-        brandLabel.setForeground(COLOR_PRIMARY);
-
-        // ด้านขวา: จัดเรียงตามลำดับที่กำหนด ชิดขวา
-        JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
-        rightPanel.setOpaque(false);
-
-        // 1. ชื่อผู้ใช้
-        JLabel usernameLabel = new JLabel("User: " + currentUser.username());
-        usernameLabel.setFont(fontLabel);
-        usernameLabel.setForeground(COLOR_TEXT_TITLE);
-        usernameLabel.setBorder(new EmptyBorder(5, 2, 5, 2));
-
-        // 2. ปุ่มสมัครสมาชิก
-        membershipButton = new JButton("Membership");
-        membershipButton.setFont(fontLabel);
-        membershipButton.setFocusPainted(false);
-        membershipButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        membershipButton.addActionListener(e -> showMembershipDialog());
-
-        // 3. เงินคงเหลือ
-        balanceLabel = new JLabel("Balance: 0 THB");
-        balanceLabel.setFont(fontLabel);
-        balanceLabel.setForeground(new Color(5, 150, 105)); // Green #059669
-        balanceLabel.setBorder(new EmptyBorder(5, 2, 5, 2));
-
-        // 4. ปุ่มเติมเงิน
-        JButton topUpButton = new JButton("Top-up");
-        topUpButton.setFont(fontLabel);
-        topUpButton.setBackground(new Color(16, 185, 129)); // Emerald Green #10B981
-        topUpButton.setForeground(Color.BLACK);
-        topUpButton.setFocusPainted(false);
-        topUpButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        topUpButton.setBorder(new CompoundBorder(
-                new LineBorder(new Color(16, 185, 129), 1, true),
-                new EmptyBorder(5, 12, 5, 12)));
-        topUpButton.addActionListener(e -> showTopUpDialog());
-
-        // 5. ประวัติ
-        JButton historyButton = new JButton("History");
-        historyButton.setFont(fontLabel);
-        historyButton.setBackground(Color.WHITE);
-        historyButton.setForeground(COLOR_TEXT_LABEL);
-        historyButton.setFocusPainted(false);
-        historyButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        historyButton.setBorder(new CompoundBorder(
-                new LineBorder(COLOR_INPUT_BORDER, 1, true),
-                new EmptyBorder(5, 12, 5, 12)));
-        historyButton.addActionListener(e -> showHistoryDialog());
-
-        // 6. ปุ่ม logout
-        JButton logoutButton = new JButton("Logout");
-        logoutButton.setFont(fontLabel);
-        logoutButton.setBackground(new Color(254, 242, 242));
-        logoutButton.setForeground(new Color(220, 38, 38)); // Red #DC2626
-        logoutButton.setFocusPainted(false);
-        logoutButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        logoutButton.setBorder(new CompoundBorder(
-                new LineBorder(new Color(252, 165, 165), 1, true),
-                new EmptyBorder(5, 12, 5, 12)));
-        logoutButton.addActionListener(e -> handleLogout());
-
-        // เพิ่มเข้า rightPanel เรียงตามลำดับที่กำหนด
-        rightPanel.add(usernameLabel);
-        rightPanel.add(membershipButton);
-        rightPanel.add(balanceLabel);
-        rightPanel.add(topUpButton);
-        rightPanel.add(historyButton);
-        rightPanel.add(logoutButton);
-
-        topBar.add(brandLabel, BorderLayout.WEST);
-        topBar.add(rightPanel, BorderLayout.EAST);
-
-        return topBar;
-    }
-
-    /**
-     * อัปเดตข้อมูลแถบด้านบน (ยอดเงินคงเหลือ และสถานะปุ่มสมาชิก)
+     * อัปเดตยอดเงินและปุ่มสมาชิกบนแถบด้านบน
      */
     private void refreshAccountBar() {
-        if (balanceLabel == null || membershipButton == null) return;
-
+        if (topBar == null) return;
         if (accountService == null) {
-            balanceLabel.setText("Balance: 0 THB");
-            membershipButton.setText("Membership");
+            topBar.updateAccount(null, false);
             return;
         }
 
         try {
             Account account = accountService.accountOf(currentUser);
-            balanceLabel.setText("Balance: " + account.balance() + " THB");
-
             boolean isMember = accountService.isMember(currentUser);
-            if (isMember && account.memberUntil() != null) {
-                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM");
-                membershipButton.setText("Member (until " + account.memberUntil().format(formatter) + ")");
-                membershipButton.setBackground(new Color(254, 243, 199)); // Amber light
-                membershipButton.setForeground(new Color(180, 83, 9));    // Amber dark
-                membershipButton.setBorder(new CompoundBorder(
-                        new LineBorder(new Color(245, 158, 11), 1, true),
-                        new EmptyBorder(5, 12, 5, 12)));
-            } else {
-                membershipButton.setText("Membership");
-                membershipButton.setBackground(new Color(238, 242, 255)); // Indigo light
-                membershipButton.setForeground(COLOR_PRIMARY);
-                membershipButton.setBorder(new CompoundBorder(
-                        new LineBorder(new Color(199, 210, 254), 1, true),
-                        new EmptyBorder(5, 12, 5, 12)));
-            }
+            topBar.updateAccount(account, isMember);
         } catch (Exception e) {
-            balanceLabel.setText("Balance: -");
-            membershipButton.setText("Membership");
+            topBar.updateAccount(null, false);
         }
     }
 
     /**
-     * เปิดหน้าต่างสมัครสมาชิก / ต่ออายุสมาชิก
+     * เปิดหน้าต่างจัดการสมาชิก
      */
     private void showMembershipDialog() {
-        if (accountService == null) {
-            JOptionPane.showMessageDialog(this, "AccountService not available", "Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
-        try {
-            Account account = accountService.accountOf(currentUser);
-            boolean isMember = accountService.isMember(currentUser);
-
-            JDialog dialog = new JDialog(this, isMember ? "KU CINEMA Membership Status" : "KU CINEMA Membership Subscription", true);
-            dialog.setSize(400, 300);
-            dialog.setLocationRelativeTo(this);
-            dialog.setResizable(false);
-
-            JPanel panel = new JPanel();
-            panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-            panel.setBackground(Color.WHITE);
-            panel.setBorder(new EmptyBorder(20, 24, 20, 24));
-
-            JLabel title = new JLabel(isMember ? "KU CINEMA Membership Status" : "KU CINEMA Membership Subscription");
-            title.setFont(new Font("Tahoma", Font.BOLD, 16));
-            title.setForeground(COLOR_TEXT_TITLE);
-            title.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-            JLabel benefit = new JLabel("Benefits: 10% discount on all seats and showtimes");
-            benefit.setFont(fontSubtitle);
-            benefit.setForeground(COLOR_PRIMARY);
-            benefit.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-            JLabel feeLabel = new JLabel("Fee: " + AccountService.MEMBERSHIP_PRICE + " THB / 30 Days");
-            feeLabel.setFont(fontText);
-            feeLabel.setForeground(COLOR_TEXT_LABEL);
-            feeLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-            String statusStr = isMember && account.memberUntil() != null
-                    ? "Status: Member (Expires " + account.memberUntil().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")) + ")"
-                    : "Status: Non-member";
-            JLabel statusLabel = new JLabel(statusStr);
-            statusLabel.setFont(fontText);
-            statusLabel.setForeground(isMember ? new Color(16, 185, 129) : COLOR_TEXT_MUTED);
-            statusLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-            JLabel currentBalanceLabel = new JLabel("Wallet Balance: " + account.balance() + " THB");
-            currentBalanceLabel.setFont(fontLabel);
-            currentBalanceLabel.setForeground(COLOR_TEXT_TITLE);
-            currentBalanceLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-            panel.add(title);
-            panel.add(Box.createRigidArea(new Dimension(0, 10)));
-            panel.add(benefit);
-            panel.add(Box.createRigidArea(new Dimension(0, 8)));
-            panel.add(feeLabel);
-            panel.add(Box.createRigidArea(new Dimension(0, 6)));
-            panel.add(statusLabel);
-            panel.add(Box.createRigidArea(new Dimension(0, 8)));
-            panel.add(currentBalanceLabel);
-            panel.add(Box.createRigidArea(new Dimension(0, 18)));
-
-            JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
-            btnPanel.setOpaque(false);
-
-            JButton actionBtn = new JButton(isMember ? "Renew Membership (99 THB)" : "Confirm Subscription (99 THB)");
-            actionBtn.setFont(fontLabel);
-            actionBtn.setBackground(COLOR_PRIMARY);
-            actionBtn.setForeground(Color.BLACK);
-            actionBtn.setFocusPainted(false);
-            actionBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-            actionBtn.setBorder(new CompoundBorder(
-                    new LineBorder(COLOR_PRIMARY, 1, true),
-                    new EmptyBorder(7, 16, 7, 16)));
-
-            actionBtn.addActionListener(e -> {
-                if (account.balance() < AccountService.MEMBERSHIP_PRICE) {
-                    int opt = JOptionPane.showConfirmDialog(
-                            dialog,
-                            "Insufficient balance (Requires " + AccountService.MEMBERSHIP_PRICE + " THB, Available " + account.balance() + " THB)\nWould you like to top up now?",
-                            "Insufficient Balance",
-                            JOptionPane.YES_NO_OPTION,
-                            JOptionPane.WARNING_MESSAGE);
-                    if (opt == JOptionPane.YES_OPTION) {
-                        dialog.dispose();
-                        showTopUpDialog();
-                    }
-                    return;
-                }
-
-                try {
-                    Account updated = accountService.subscribe(currentUser);
-                    dialog.dispose();
-                    refreshAccountBar();
-                    String untilStr = updated.memberUntil() != null
-                            ? updated.memberUntil().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
-                            : "";
-                    JOptionPane.showMessageDialog(
-                            this,
-                            (isMember ? "Membership renewed successfully!" : "Membership subscribed successfully!") + "\nMember until: " + untilStr + "\nRemaining balance: " + updated.balance() + " THB",
-                            "Success",
-                            JOptionPane.INFORMATION_MESSAGE);
-                } catch (Exception ex) {
-                    JOptionPane.showMessageDialog(dialog, "Error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-                }
-            });
-
-            JButton closeBtn = new JButton("Close");
-            closeBtn.setFont(fontLabel);
-            closeBtn.setBackground(Color.WHITE);
-            closeBtn.setForeground(COLOR_TEXT_LABEL);
-            closeBtn.setFocusPainted(false);
-            closeBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-            closeBtn.setBorder(new CompoundBorder(
-                    new LineBorder(COLOR_INPUT_BORDER, 1, true),
-                    new EmptyBorder(7, 16, 7, 16)));
-            closeBtn.addActionListener(e -> dialog.dispose());
-
-            btnPanel.add(actionBtn);
-            btnPanel.add(closeBtn);
-            panel.add(btnPanel);
-
-            dialog.setContentPane(panel);
-            dialog.setVisible(true);
-
-        } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Cannot retrieve membership info: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-        }
+        MembershipDialog dialog = new MembershipDialog(
+                this,
+                currentUser,
+                accountService,
+                this::refreshAccountBar,
+                this::showTopUpDialog
+        );
+        dialog.setVisible(true);
     }
 
     /**
-     * เปิดหน้าต่างเติมเงิน (Top-up)
+     * เปิดหน้าต่างเติมเงิน
      */
     private void showTopUpDialog() {
-        if (accountService == null) {
-            JOptionPane.showMessageDialog(this, "AccountService not available", "Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
-        try {
-            Account account = accountService.accountOf(currentUser);
-
-            JDialog dialog = new JDialog(this, "Wallet Top-up", true);
-            dialog.setSize(420, 320);
-            dialog.setLocationRelativeTo(this);
-            dialog.setResizable(false);
-
-            JPanel panel = new JPanel();
-            panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-            panel.setBackground(Color.WHITE);
-            panel.setBorder(new EmptyBorder(20, 24, 20, 24));
-
-            JLabel title = new JLabel("Wallet Top-up");
-            title.setFont(new Font("Tahoma", Font.BOLD, 16));
-            title.setForeground(COLOR_TEXT_TITLE);
-            title.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-            JLabel curBalance = new JLabel("Current Balance: " + account.balance() + " THB");
-            curBalance.setFont(fontSubtitle);
-            curBalance.setForeground(COLOR_TEXT_MUTED);
-            curBalance.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-            JLabel promptLabel = new JLabel("Select or enter amount (1 - 5,000 THB):");
-            promptLabel.setFont(fontLabel);
-            promptLabel.setForeground(COLOR_TEXT_LABEL);
-            promptLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-            // ปุ่มลัดเลือกจำนวนเงิน
-            JPanel quickPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 6, 0));
-            quickPanel.setOpaque(false);
-            int[] quickAmounts = {100, 200, 300, 500, 1000};
-            JTextField amountField = new JTextField("100", 12);
-            amountField.setFont(new Font("Tahoma", Font.PLAIN, 14));
-            amountField.setHorizontalAlignment(JTextField.CENTER);
-            amountField.setMaximumSize(new Dimension(200, 32));
-
-            for (int amt : quickAmounts) {
-                JButton qBtn = new JButton("+" + amt);
-                qBtn.setFont(fontSmall);
-                qBtn.setBackground(new Color(243, 244, 246));
-                qBtn.setForeground(COLOR_TEXT_LABEL);
-                qBtn.setFocusPainted(false);
-                qBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-                qBtn.setBorder(new CompoundBorder(
-                        new LineBorder(COLOR_INPUT_BORDER, 1, true),
-                        new EmptyBorder(4, 8, 4, 8)));
-                qBtn.addActionListener(e -> amountField.setText(String.valueOf(amt)));
-                quickPanel.add(qBtn);
-            }
-
-            panel.add(title);
-            panel.add(Box.createRigidArea(new Dimension(0, 6)));
-            panel.add(curBalance);
-            panel.add(Box.createRigidArea(new Dimension(0, 14)));
-            panel.add(promptLabel);
-            panel.add(Box.createRigidArea(new Dimension(0, 10)));
-            panel.add(quickPanel);
-            panel.add(Box.createRigidArea(new Dimension(0, 12)));
-            panel.add(amountField);
-            panel.add(Box.createRigidArea(new Dimension(0, 20)));
-
-            JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
-            btnPanel.setOpaque(false);
-
-            JButton confirmBtn = new JButton("Confirm Top-up");
-            confirmBtn.setFont(fontLabel);
-            confirmBtn.setBackground(new Color(16, 185, 129)); // Emerald Green
-            confirmBtn.setForeground(Color.BLACK);
-            confirmBtn.setFocusPainted(false);
-            confirmBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-            confirmBtn.setBorder(new CompoundBorder(
-                    new LineBorder(new Color(16, 185, 129), 1, true),
-                    new EmptyBorder(7, 16, 7, 16)));
-
-            confirmBtn.addActionListener(e -> {
-                String text = amountField.getText().trim();
-                int amt;
-                try {
-                    amt = Integer.parseInt(text);
-                } catch (NumberFormatException nfe) {
-                    JOptionPane.showMessageDialog(dialog, "Please enter a valid integer amount", "Error", JOptionPane.ERROR_MESSAGE);
-                    return;
-                }
-
-                if (amt < 1 || amt > 5000) {
-                    JOptionPane.showMessageDialog(dialog, "Top-up amount must be between 1 and 5,000 THB", "Error", JOptionPane.ERROR_MESSAGE);
-                    return;
-                }
-
-                try {
-                    Account updated = accountService.topUp(currentUser, amt);
-                    dialog.dispose();
-                    refreshAccountBar();
-                    JOptionPane.showMessageDialog(
-                            this,
-                            "Top-up successful: " + amt + " THB\nCurrent Balance: " + updated.balance() + " THB",
-                            "Top-up Successful",
-                            JOptionPane.INFORMATION_MESSAGE);
-                } catch (Exception ex) {
-                    JOptionPane.showMessageDialog(dialog, "Error during top-up: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-                }
-            });
-
-            JButton cancelBtn = new JButton("Cancel");
-            cancelBtn.setFont(fontLabel);
-            cancelBtn.setBackground(Color.WHITE);
-            cancelBtn.setForeground(COLOR_TEXT_LABEL);
-            cancelBtn.setFocusPainted(false);
-            cancelBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-            cancelBtn.setBorder(new CompoundBorder(
-                    new LineBorder(COLOR_INPUT_BORDER, 1, true),
-                    new EmptyBorder(7, 16, 7, 16)));
-            cancelBtn.addActionListener(e -> dialog.dispose());
-
-            btnPanel.add(confirmBtn);
-            btnPanel.add(cancelBtn);
-            panel.add(btnPanel);
-
-            dialog.setContentPane(panel);
-            dialog.setVisible(true);
-
-        } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Cannot retrieve account data: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-        }
+        TopUpDialog dialog = new TopUpDialog(
+                this,
+                currentUser,
+                accountService,
+                this::refreshAccountBar
+        );
+        dialog.setVisible(true);
     }
 
     /**
-     * เปิดหน้าต่างประวัติการจองตั๋วภาพยนตร์
+     * เปิดหน้าต่างประวัติการจองตั๋ว
      */
     private void showHistoryDialog() {
-        if (bookingService == null) {
-            JOptionPane.showMessageDialog(this, "BookingService not available", "Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
-        try {
-            List<Booking> history = bookingService.historyOf(currentUser);
-
-            JDialog dialog = new JDialog(this, "Booking History", true);
-            dialog.setSize(620, 480);
-            dialog.setLocationRelativeTo(this);
-
-            JPanel mainDialogPanel = new JPanel(new BorderLayout());
-            mainDialogPanel.setBackground(COLOR_BG);
-            mainDialogPanel.setBorder(new EmptyBorder(16, 20, 16, 20));
-
-            // ส่วนหัว Dialog
-            JLabel title = new JLabel("Booking History (" + currentUser.username() + ")");
-            title.setFont(new Font("Tahoma", Font.BOLD, 16));
-            title.setForeground(COLOR_TEXT_TITLE);
-            title.setBorder(new EmptyBorder(0, 0, 12, 0));
-            mainDialogPanel.add(title, BorderLayout.NORTH);
-
-            if (history.isEmpty()) {
-                JPanel emptyPanel = new JPanel(new GridBagLayout());
-                emptyPanel.setBackground(Color.WHITE);
-                emptyPanel.setBorder(new LineBorder(COLOR_CARD_BORDER, 1, true));
-
-                JLabel emptyLabel = new JLabel("No booking history yet");
-                emptyLabel.setFont(fontText);
-                emptyLabel.setForeground(COLOR_TEXT_MUTED);
-                emptyPanel.add(emptyLabel);
-
-                mainDialogPanel.add(emptyPanel, BorderLayout.CENTER);
-            } else {
-                JPanel listPanel = new JPanel();
-                listPanel.setLayout(new BoxLayout(listPanel, BoxLayout.Y_AXIS));
-                listPanel.setBackground(COLOR_BG);
-
-                DateTimeFormatter dtFormat = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
-
-                for (Booking b : history) {
-                    JPanel itemCard = new JPanel(new BorderLayout(8, 6));
-                    itemCard.setBackground(Color.WHITE);
-                    itemCard.setBorder(new CompoundBorder(
-                            new LineBorder(COLOR_CARD_BORDER, 1, true),
-                            new EmptyBorder(12, 14, 12, 14)));
-                    itemCard.setMaximumSize(new Dimension(Integer.MAX_VALUE, 100));
-
-                    // ข้อมูลฝั่งซ้าย
-                    Showtime st = bookingService.showtimeOf(b);
-                    String movieTitle = (st != null && st.movie() != null) ? st.movie().title() : "Showtime ID: " + b.showtimeId();
-                    String showtimeText = (st != null)
-                            ? "Date: " + st.date().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) + " Time: " + st.start() + " (Hall " + st.hall() + ")"
-                            : "Showtime: " + b.showtimeId();
-
-                    JPanel leftInfo = new JPanel();
-                    leftInfo.setLayout(new BoxLayout(leftInfo, BoxLayout.Y_AXIS));
-                    leftInfo.setOpaque(false);
-
-                    JLabel movieLabel = new JLabel(b.id() + " - " + movieTitle);
-                    movieLabel.setFont(fontLabel);
-                    movieLabel.setForeground(COLOR_PRIMARY);
-
-                    JLabel timeLabel = new JLabel(showtimeText);
-                    timeLabel.setFont(fontSubtitle);
-                    timeLabel.setForeground(COLOR_TEXT_TITLE);
-
-                    JLabel seatLabel = new JLabel("Seats: " + String.join(", ", b.seatCodes()) + " | Booked: " + b.bookedAt().format(dtFormat));
-                    seatLabel.setFont(fontSmall);
-                    seatLabel.setForeground(COLOR_TEXT_MUTED);
-
-                    leftInfo.add(movieLabel);
-                    leftInfo.add(Box.createRigidArea(new Dimension(0, 3)));
-                    leftInfo.add(timeLabel);
-                    leftInfo.add(Box.createRigidArea(new Dimension(0, 3)));
-                    leftInfo.add(seatLabel);
-
-                    // ยอดเงินฝั่งขวา
-                    JPanel rightPrice = new JPanel(new GridBagLayout());
-                    rightPrice.setOpaque(false);
-                    JLabel priceLabel = new JLabel(b.totalPrice() + " THB");
-                    priceLabel.setFont(new Font("Tahoma", Font.BOLD, 15));
-                    priceLabel.setForeground(new Color(16, 185, 129));
-                    rightPrice.add(priceLabel);
-
-                    itemCard.add(leftInfo, BorderLayout.CENTER);
-                    itemCard.add(rightPrice, BorderLayout.EAST);
-
-                    listPanel.add(itemCard);
-                    listPanel.add(Box.createRigidArea(new Dimension(0, 8)));
-                }
-
-                JScrollPane scrollPane = new JScrollPane(listPanel);
-                scrollPane.setBorder(BorderFactory.createEmptyBorder());
-                scrollPane.setOpaque(false);
-                scrollPane.getViewport().setOpaque(false);
-                scrollPane.getVerticalScrollBar().setUnitIncrement(12);
-
-                mainDialogPanel.add(scrollPane, BorderLayout.CENTER);
-            }
-
-            // ปุ่มปิดด้านล่าง
-            JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 8));
-            bottomPanel.setOpaque(false);
-            JButton closeBtn = new JButton("Close");
-            closeBtn.setFont(fontLabel);
-            closeBtn.setBackground(Color.WHITE);
-            closeBtn.setForeground(COLOR_TEXT_LABEL);
-            closeBtn.setFocusPainted(false);
-            closeBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-            closeBtn.setBorder(new CompoundBorder(
-                    new LineBorder(COLOR_INPUT_BORDER, 1, true),
-                    new EmptyBorder(6, 16, 6, 16)));
-            closeBtn.addActionListener(e -> dialog.dispose());
-            bottomPanel.add(closeBtn);
-
-            mainDialogPanel.add(bottomPanel, BorderLayout.SOUTH);
-
-            dialog.setContentPane(mainDialogPanel);
-            dialog.setVisible(true);
-
-        } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Cannot retrieve booking history: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-        }
+        HistoryDialog dialog = new HistoryDialog(
+                this,
+                currentUser,
+                bookingService
+        );
+        dialog.setVisible(true);
     }
 
     /**
@@ -925,7 +445,11 @@ public class MainFrame extends JFrame {
             if (movieIndex < movieList.size()) {
                 Movie movie = movieList.get(movieIndex);
                 boolean isSelected = movie.equals(selectedMovie);
-                JPanel movieCard = createSingleMovieCard(movie, movieIndex, isSelected);
+                MovieCard movieCard = new MovieCard(movie, movieIndex, isSelected, () -> {
+                    selectedMovie = movie;
+                    refreshMovies();
+                    refreshShowtimes();
+                });
                 moviesPanel.add(movieCard);
             }
         }
@@ -956,53 +480,6 @@ public class MainFrame extends JFrame {
     }
 
     /**
-     * สร้างการ์ดแสดงภาพยนตร์เดี่ยว 1 เรื่อง ในสไตล์มินิมอลสะอาดตา
-     */
-    private JPanel createSingleMovieCard(Movie movie, int index, boolean isSelected) {
-        JPanel card = new JPanel();
-        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
-        card.setOpaque(false);
-        card.setCursor(new Cursor(Cursor.HAND_CURSOR));
-
-        // กล่องรูปโปสเตอร์
-        PosterBox posterBox = new PosterBox(movie, index, isSelected);
-        posterBox.setAlignmentX(Component.CENTER_ALIGNMENT);
-        card.add(posterBox);
-
-        card.add(Box.createRigidArea(new Dimension(0, 6)));
-
-        // ชื่อภาพยนตร์
-        JLabel titleLbl = new JLabel("<html><div style='text-align: center; font-family: Tahoma;'>"
-                + movie.title() + "</div></html>", SwingConstants.CENTER);
-        titleLbl.setFont(new Font("Tahoma", isSelected ? Font.BOLD : Font.PLAIN, 11));
-        titleLbl.setForeground(isSelected ? COLOR_PRIMARY : COLOR_TEXT_TITLE);
-        titleLbl.setAlignmentX(Component.CENTER_ALIGNMENT);
-        titleLbl.setPreferredSize(new Dimension(170, 34));
-        titleLbl.setMaximumSize(new Dimension(170, 34));
-        card.add(titleLbl);
-
-        card.add(Box.createRigidArea(new Dimension(0, 2)));
-
-        // ความยาวภาพยนตร์
-        JLabel durLbl = new JLabel(movie.durationMinutes() + " min", SwingConstants.CENTER);
-        durLbl.setFont(fontSmall);
-        durLbl.setForeground(COLOR_TEXT_MUTED);
-        durLbl.setAlignmentX(Component.CENTER_ALIGNMENT);
-        card.add(durLbl);
-
-        card.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                selectedMovie = movie;
-                refreshMovies();
-                refreshShowtimes();
-            }
-        });
-
-        return card;
-    }
-
-    /**
      * ดึงรอบฉายของภาพยนตร์และวันที่เลือก มาแสดงเป็นปุ่ม
      */
     private void refreshShowtimes() {
@@ -1027,7 +504,7 @@ public class MainFrame extends JFrame {
             List<Showtime> showtimes = movieService.showtimesOf(selectedMovie, selectedDate);
             if (showtimes.isEmpty()) {
                 JLabel emptyLbl = new JLabel("No showtimes available for the selected date");
-                emptyLbl.setFont(fontSmall);
+                emptyLbl.setFont(FONT_SMALL);
                 emptyLbl.setForeground(COLOR_TEXT_MUTED);
                 showtimesListPanel.add(emptyLbl);
             } else {
@@ -1039,7 +516,7 @@ public class MainFrame extends JFrame {
             }
         } catch (IOException e) {
             JLabel errLbl = new JLabel("Cannot load showtimes: " + e.getMessage());
-            errLbl.setFont(fontSmall);
+            errLbl.setFont(FONT_SMALL);
             errLbl.setForeground(new Color(220, 38, 38));
             showtimesListPanel.add(errLbl);
         }
@@ -1128,87 +605,6 @@ public class MainFrame extends JFrame {
     }
 
     /**
-     * กล่องภาพโปสเตอร์สไตล์เรียบง่าย รองรับทั้งไฟล์ภาพจริง และการ์ดสี A, B, C
-     */
-    private class PosterBox extends JPanel {
-        private final Movie movie;
-        private final int index;
-        private final boolean isSelected;
-        private BufferedImage image;
-
-        public PosterBox(Movie movie, int index, boolean isSelected) {
-            this.movie = movie;
-            this.index = index;
-            this.isSelected = isSelected;
-            setPreferredSize(new Dimension(150, 200));
-            setMaximumSize(new Dimension(150, 200));
-            setOpaque(false);
-
-            if (movie.posterPath() != null && !movie.posterPath().isBlank()) {
-                try {
-                    Path p = resolveDataPath(movie.posterPath());
-                    if (Files.exists(p)) {
-                        this.image = ImageIO.read(p.toFile());
-                    }
-                } catch (Exception ignored) {
-                }
-            }
-        }
-
-        @Override
-        protected void paintComponent(Graphics g) {
-            super.paintComponent(g);
-            Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-
-            int x = 2, y = 2;
-            int w = getWidth() - 4;
-            int h = getHeight() - 4;
-            int arc = 10;
-
-            // กรอบเส้นสีน้ำเงินเมื่อถูกเลือก
-            if (isSelected) {
-                g2.setColor(COLOR_PRIMARY);
-                g2.setStroke(new BasicStroke(2.5f));
-                g2.drawRoundRect(x - 1, y - 1, w + 2, h + 2, arc + 2, arc + 2);
-            }
-
-            // ถ้ามีรูปโปสเตอร์จริง ให้วาดรูปภาพ
-            if (image != null) {
-                g2.setClip(new RoundRectangle2D.Float(x, y, w, h, arc, arc));
-                g2.drawImage(image, x, y, w, h, null);
-            } else {
-                // ถ้าไม่มีรูปภาพ ให้แสดงการ์ดสีมินิมอล A, B, C...
-                Color[] softColors = {
-                        new Color(71, 85, 105),  // Slate Blue
-                        new Color(109, 40, 217), // Violet
-                        new Color(13, 148, 136), // Teal
-                        new Color(217, 119, 6),  // Amber
-                        new Color(37, 99, 235)   // Blue
-                };
-                Color color = softColors[index % softColors.length];
-                g2.setColor(color);
-                g2.fillRoundRect(x, y, w, h, arc, arc);
-
-                g2.setColor(Color.BLACK);
-                g2.setFont(new Font("Tahoma", Font.BOLD, 13));
-                FontMetrics fm1 = g2.getFontMetrics();
-                String text1 = "Poster";
-                g2.drawString(text1, x + (w - fm1.stringWidth(text1)) / 2, y + (h / 2) - 10);
-
-                char letter = (char) ('A' + (index % 26));
-                g2.setFont(new Font("Tahoma", Font.BOLD, 36));
-                FontMetrics fm2 = g2.getFontMetrics();
-                String text2 = String.valueOf(letter);
-                g2.drawString(text2, x + (w - fm2.stringWidth(text2)) / 2, y + (h / 2) + 28);
-            }
-
-            g2.dispose();
-        }
-    }
-
-    /**
      * ค้นหาตำแหน่งไฟล์ข้อมูล รองรับทั้ง root directory และ subfolder
      */
     public static Path resolveDataPath(String fileName) {
@@ -1232,7 +628,7 @@ public class MainFrame extends JFrame {
 
         SwingUtilities.invokeLater(() -> {
             AppServices appServices = AppServices.create();
-            User defaultUser = new User("thanawat", "password123");
+            User defaultUser = new User("-", "-");
 
             MainFrame frame = new MainFrame(defaultUser, appServices);
             frame.setVisible(true);
