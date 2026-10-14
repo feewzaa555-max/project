@@ -8,7 +8,7 @@
       ไฟล์นี้จึงสร้างทุกอย่าง "ครั้งเดียว" ตอนเปิดโปรแกรม แล้วส่งตัว app นี้ต่อกันไปทุกหน้าจอ
       ทุกหน้าจอเลยใช้นาฬิกาตัวเดียวกัน และอ่าน/เขียนไฟล์ชุดเดียวกัน
 
-    หน้าจอหยิบของได้ 7 อย่าง:
+    หน้าจอหยิบของได้ 8 อย่าง:
       auth()      → AuthService     ใช้ในหน้า Login / สมัคร
       movies()    → MovieService    ใช้ในหน้าเลือกหนัง (หนัง, รอบ, รอบไหนยังจองได้)
       accounts()  → AccountService  ใช้แสดงเงินคงเหลือ, เติมเงิน, สมัครสมาชิก
@@ -16,6 +16,7 @@
       admin()     → AdminService    ใช้ในหน้า admin (เลือกหนัง 5 เรื่องที่จะฉายพรุ่งนี้)
       layout()    → HallLayout      ใช้วาดผังที่นั่ง (แถว A–F, ทางเดินหลังที่นั่งเลข 5)
       clock()     → AppClock        ใช้ปุ่มตั้งเวลา / รีเซ็ตเวลาตอน demo (ทุกหน้าเห็นเวลาเดียวกัน)
+      dataFolder()→ Path            โฟลเดอร์ data ที่ชุดนี้ใช้ ให้หน้าลูกค้าหารูปโปสเตอร์ (posters/m1.jpg) จากโฟลเดอร์เดียวกับไฟล์ CSV
 
     ตัวอย่างการใช้ในหน้าจอ:
 
@@ -55,11 +56,12 @@ import repository.MovieRepository;       // ชนิด interface ของท�
 public final class AppServices {
 
     // AF: ชุดของหลังบ้านของโปรแกรม 1 ชุด ที่อ่าน/เขียนไฟล์ในโฟลเดอร์ data เดียวกัน และใช้นาฬิกา clock ตัวเดียวกัน
-    // RI: ทุก field ไม่เป็น null
+    // RI: ทุก field ไม่เป็น null (รวม dataFolder)
     //     movies, accounts, bookings, admin ใช้ clock ตัวเดียวกันกับ field clock
     // Safety from rep exposure: field เป็น private final ไม่มีเมธอดเปลี่ยน field
     //     เมธอดคืน service ตัวจริงออกไปโดยตั้งใจ เพื่อให้ทุกหน้าจอใช้ตัวเดียวกัน
     //     (ถ้าคืนตัวสำเนา นาฬิกาแต่ละหน้าจะไม่ตรงกัน ซึ่งเป็นปัญหาที่ไฟล์นี้มีไว้แก้)
+    //     dataFolder() คืน Path ตัวจริงได้ เพราะ Path แก้ค่าไม่ได้ (immutable) คนนอกเอาไปเปลี่ยนโฟลเดอร์ของเราไม่ได้
     // Thread safety: field ไม่เปลี่ยนหลังสร้าง ส่วนความปลอดภัยของแต่ละ service ดูที่ไฟล์นั้น ๆ
 
     // ชื่อโฟลเดอร์และชื่อไฟล์ ตั้งเป็นค่าคงที่ไว้ที่เดียว ถ้าวันหลังเปลี่ยนชื่อไฟล์ แก้บรรทัดเดียวพอ
@@ -94,6 +96,8 @@ public final class AppServices {
     private final BookingService bookings;
     /** บริการของ admin: ตั้งหนังที่จะฉายพรุ่งนี้ */
     private final AdminService admin;
+    /** โฟลเดอร์ data ที่ชุดนี้อ่าน/เขียน เช่น Booking_tickets/data (เก็บไว้ให้หน้าจอหารูปโปสเตอร์) */
+    private final Path dataFolder;
 
     /**
      * สร้างของหลังบ้านทุกตัวจากโฟลเดอร์ data ที่ให้มา
@@ -113,6 +117,8 @@ public final class AppServices {
      * @param dataFolder โฟลเดอร์ที่มีไฟล์ CSV
      */
     private AppServices(Path dataFolder) {
+        // จำโฟลเดอร์ไว้ ให้ dataFolder() คืนให้หน้าจอ (รูปโปสเตอร์อยู่ในโฟลเดอร์เดียวกับไฟล์ CSV)
+        this.dataFolder = dataFolder;
         // นาฬิกาตัวเดียวของโปรแกรม เดี๋ยวส่งตัวนี้ให้ทุก service ที่ต้องรู้เวลา
         this.clock = new AppClock();
         // ผังโรงตัวเดียว เดี๋ยวส่งให้ BookingService และให้หน้าจอหยิบผ่าน layout()
@@ -288,10 +294,22 @@ public final class AppServices {
     }
 
     /**
+     * โฟลเดอร์ data ที่ชุดนี้ใช้ ให้หน้าลูกค้าหารูปโปสเตอร์จากที่เดียวกับไฟล์ CSV
+     * ถ้าหารูปจากโฟลเดอร์ "data" ของเครื่องเอง ตอนรันด้วยโฟลเดอร์อื่น (เช่น create(Path) ตอนเทส) รูปจะไม่ขึ้น
+     * เช่น app.dataFolder().resolve("posters/m1.jpg") → Booking_tickets/data/posters/m1.jpg
+     *      (resolve = ต่อทางไฟล์ท้ายโฟลเดอร์ เป็นเมธอดของ Path)
+     *
+     * @return โฟลเดอร์ data เช่น Booking_tickets/data (Path แก้ค่าไม่ได้ คืนตัวจริงได้เลย)
+     */
+    public Path dataFolder() {
+        return dataFolder;
+    }
+
+    /**
      * ตรวจ RI ว่าของทุกตัวถูกสร้างครบ ไม่มีตัวไหนเป็น null (SC4) ทำงานเมื่อรันด้วย -ea
      */
     private void checkRep() {
-        assert clock != null && layout != null;
+        assert dataFolder != null && clock != null && layout != null;
         assert auth != null && movies != null && accounts != null && bookings != null && admin != null;
     }
 }
