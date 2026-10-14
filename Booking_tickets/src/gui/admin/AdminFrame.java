@@ -1,19 +1,24 @@
-//AdminFrame <- หน้าต่างของ admin: เอาแถบบน (AdminTopBar) กับการ์ดกลาง (LineupPanel) มาประกอบเป็นหน้าเดียว
+//AdminFrame <- หน้าต่างของ admin: เอาแถบบน (AdminTopBar) การ์ดเลือกหนัง (LineupPanel) และการ์ดตั้งเวลา (ClockPanel) มาประกอบเป็นหน้าเดียว
 /*
-    หน้าตา (เลขตรงกับ ①–⑤ ในโค้ดข้างล่าง):
+    หน้าตา (เลขตรงกับ ①–⑥ ในโค้ดข้างล่าง):
         ┌──────────────────────────────────────────────┐  ① หน้าต่าง 920 x 730 ชื่อ "KU CINEMA - Admin"
         │ AdminTopBar  (KU CINEMA / Admin / Logout)     │  ③ โซนบน (NORTH)
         ├──────────────────────────────────────────────┤
-        │  พื้นเทา                                      │  ② พื้นที่กลาง (CENTER) วางการ์ดไว้ตรงกลาง
-        │          ┌──── LineupPanel ────┐             │
+        │  พื้นเทา                                      │  ② พื้นที่กลาง (CENTER) วางคอลัมน์ไว้ตรงกลาง
+        │          ┌──── LineupPanel ────┐             │     ในคอลัมน์: lineupBox (ใส่ LineupPanel)
+        │          └─────────────────────┘             │                ช่องว่าง 16 px
+        │          ┌──── ClockPanel ─────┐             │                ClockPanel
         │          └─────────────────────┘             │
         └──────────────────────────────────────────────┘
         กด Logout → ⑤ ถามยืนยัน → ปิดหน้านี้ → เปิดหน้า Login
+        กด Set / Reset ใน ClockPanel → ClockPanel บอกว่าเวลาเปลี่ยนแล้ว → ⑥ showLineup() ใส่ LineupPanel ตัวใหม่
+                                      → Showing on เป็นวันนี้ (ตามเวลาใหม่) + 1
 
-    ไฟล์นี้ทำแค่ 2 อย่าง:
-      1. ประกอบหน้าต่าง (ขนาด, พื้นหลัง, วางแถบบนกับการ์ดกลาง)
+    ไฟล์นี้ทำแค่ 3 อย่าง:
+      1. ประกอบหน้าต่าง (ขนาด, พื้นหลัง, วางแถบบน การ์ดเลือกหนัง การ์ดตั้งเวลา)
       2. ปุ่ม Logout: ถามยืนยัน → ปิดหน้านี้ → กลับหน้า Login
-    ส่วนหน้าตาของแถบบนอยู่ใน AdminTopBar / การเลือกหนังอยู่ใน LineupPanel
+      3. เวลาเปลี่ยน → ใส่ LineupPanel ตัวใหม่ ข้อความ Showing on จะได้ตรงกับวันที่ที่ Save จะบันทึก
+    ส่วนหน้าตาของแถบบนอยู่ใน AdminTopBar / การเลือกหนังอยู่ใน LineupPanel / การตั้งเวลาอยู่ใน ClockPanel
 
     เปิดหน้านี้ยังไง (LoginFrame หลัง login แล้วเป็น admin):
         new AdminFrame(user, services).setVisible(true);
@@ -22,20 +27,23 @@
         JFrame          = หน้าต่าง 1 บาน (มีแถบชื่อ ปุ่มปิด) ข้างในใส่ JPanel
         BorderLayout    = แบ่งพื้นที่เป็นโซน NORTH (บน) / CENTER (กลาง กินที่ที่เหลือทั้งหมด)
         GridBagLayout   = ตัวจัดวางที่ถ้าใส่ของชิ้นเดียว จะวางไว้ "ตรงกลาง" ตามขนาดของมัน ไม่ยืด
+        BoxLayout(..., Y_AXIS) = เรียงของจากบนลงล่างทีละชิ้น ตามลำดับที่ add
         setContentPane  = เอา JPanel มาเป็นเนื้อหาทั้งหมดของหน้าต่าง
  */
 
 package gui.admin;
 
 import gui.login.LoginFrame;  // หน้า Login ตัวใหม่ (โฟลเดอร์ gui/login) กด Logout แล้วกลับไปหน้านี้ อยู่คนละ package เลยต้อง import
-import java.awt.*;            // BorderLayout = แบ่งบน/กลาง, GridBagLayout = วางการ์ดไว้กลางจอ
-import javax.swing.*;         // JFrame = หน้าต่าง, JPanel = กล่อง, JOptionPane = กล่องถามยืนยัน Logout
+import java.awt.*;            // BorderLayout = แบ่งบน/กลาง, GridBagLayout = วางการ์ดไว้กลางจอ, Dimension = ขนาดช่องว่าง
+import javax.swing.*;         // JFrame = หน้าต่าง, JPanel = กล่อง, JOptionPane = กล่องถามยืนยัน Logout, Box/BoxLayout = เรียงการ์ดบนลงล่าง
 import model.User;            // admin ที่ login อยู่
 import service.AppServices;   // ของหลังบ้านชุดเดียวกับทั้งโปรแกรม
 
 public final class AdminFrame extends JFrame {
 
-    private final AppServices services;   // เก็บไว้ส่งกลับให้ LoginFrame ตอน Logout (นาฬิกาและไฟล์ชุดเดิม)
+    private final AppServices services;   // เก็บไว้ส่งกลับให้ LoginFrame ตอน Logout (นาฬิกาและไฟล์ชุดเดิม) และส่งให้ LineupPanel ตัวใหม่
+    private final User admin;             // คนที่ login อยู่ ใช้ตอนสร้าง LineupPanel ตัวใหม่ใน ⑥ showLineup()
+    private final JPanel lineupBox;       // กล่องที่ใส่ LineupPanel ไว้ 1 ตัว เวลาเปลี่ยน → เอาตัวเก่าออก ใส่ตัวใหม่ในกล่องนี้
 
     /**
      * เปิดหน้า admin
@@ -57,6 +65,7 @@ public final class AdminFrame extends JFrame {
             throw new IllegalArgumentException("services must not be null");
         }
         this.services = services;
+        this.admin = admin;
 
         // ① ตั้งค่าหน้าต่าง
         setTitle("KU CINEMA - Admin");                     // ข้อความบนแถบชื่อหน้าต่าง
@@ -65,11 +74,30 @@ public final class AdminFrame extends JFrame {
         setLocationRelativeTo(null);                       // null = เปิดกลางจอ
         setResizable(false);                               // ห้ามลากยืดหน้าต่าง หน้าตาจะได้ไม่เพี้ยน
 
-        // ② พื้นที่กลาง: พื้นเทา + การ์ด LineupPanel อยู่ตรงกลาง
-        //    GridBagLayout ใส่ของชิ้นเดียว → วางชิ้นนั้นไว้กลางพื้นที่ ตามขนาดของมัน (560 x 420) ไม่ยืดเต็ม
+        // ② พื้นที่กลาง: พื้นเทา + คอลัมน์การ์ด 2 ใบอยู่ตรงกลาง
+        //    lineupBox = กล่องใส่ LineupPanel (BorderLayout ใส่ชิ้นเดียว → ชิ้นนั้นเต็มกล่องพอดี)
+        //    setOpaque(false) = โปร่งใส ไม่ทาสีพื้นของกล่อง ให้เห็นพื้นเทาข้างหลัง
+        lineupBox = new JPanel(new BorderLayout());
+        lineupBox.setOpaque(false);
+        showLineup();   // ⑥ ใส่ LineupPanel ตัวแรกลงกล่อง (ใช้เมธอดเดียวกับตอนเวลาเปลี่ยน ไม่เขียนซ้ำ)
+
+        //    column = เรียงบนลงล่าง: lineupBox (560 x 420) → ช่องว่าง 16 px → ClockPanel (560 x 130)
+        //    Box.createRigidArea(new Dimension(0, 16)) = ก้อนว่าง กว้าง 0 สูง 16 px
+        //    new ClockPanel(นาฬิกา, สิ่งที่ต้องทำหลังเวลาเปลี่ยน)
+        //      services.clock()  = นาฬิกาตัวเดียวของทั้งโปรแกรม (AppServices.java บรรทัด 231)
+        //      this::showLineup  = ส่งเมธอด showLineup (⑥) ให้ ClockPanel เก็บไว้ กด Set / Reset สำเร็จ → ClockPanel เรียก onChange.run() → showLineup() ทำงาน
+        //                          ใช้ :: เพราะ showLineup ไม่รับพารามิเตอร์ (เหมือน this::handleLogout ข้างล่าง)
+        JPanel column = new JPanel();
+        column.setLayout(new BoxLayout(column, BoxLayout.Y_AXIS));
+        column.setOpaque(false);
+        column.add(lineupBox);
+        column.add(Box.createRigidArea(new Dimension(0, 16)));
+        column.add(new ClockPanel(services.clock(), this::showLineup));
+
+        //    GridBagLayout ใส่ของชิ้นเดียว (column) → วางไว้กลางพื้นที่ ตามขนาดของมัน (560 x 566) ไม่ยืดเต็ม
         JPanel center = new JPanel(new GridBagLayout());
         center.setBackground(AdminTheme.BACKGROUND);
-        center.add(new LineupPanel(admin, services));
+        center.add(column);
 
         // ③ แบ่งหน้าต่างเป็น บน (แถบบน) / กลาง (พื้นที่กลาง ②)
         //    new AdminTopBar(ชื่อ, คำสั่งตอนกด Logout)
@@ -96,5 +124,20 @@ public final class AdminFrame extends JFrame {
             dispose();                                     // ปิดหน้า admin
             new LoginFrame(services).setVisible(true);     // เปิดหน้า Login ด้วย services ตัวเดิม
         }
+    }
+
+    /**
+     * ⑥ ใส่ LineupPanel ตัวใหม่ลง lineupBox
+     * ใช้ 2 ที่: ตอนเปิดหน้า (②) และตอน ClockPanel บอกว่าเวลาเปลี่ยนแล้ว (ส่งไปเป็น this::showLineup)
+     * ทำไมต้องสร้างใหม่: LineupPanel เขียน "Showing on 15/10/2026" ครั้งเดียวตอนสร้าง
+     *   ไม่สร้างใหม่ → ตั้งเวลาเป็น 20/10 แล้วจอยังบอก 15/10 แต่กด Save จะบันทึกของ 21/10 (จอหลอก admin)
+     *   สร้างใหม่    → ตัวใหม่ถาม tomorrow() ใหม่ → Showing on 21/10/2026 ตรงกับที่ Save จะบันทึก
+     *   ถ้า admin ไม่จัดหนังของพรุ่งนี้ ก็ไม่ต้องกด Save หนังจะฉายชุดเดิมต่อไป
+     */
+    private void showLineup() {
+        lineupBox.removeAll();                               // เอา LineupPanel ตัวเก่าออก ไม่งั้นมี 2 ตัวซ้อนกัน
+        lineupBox.add(new LineupPanel(admin, services));     // ใส่ตัวใหม่ (ตอนสร้างจะอ่าน tomorrow() ตามเวลาตอนนี้)
+        lineupBox.revalidate();                              // บอก Swing ว่าของข้างในเปลี่ยน ให้จัดตำแหน่งใหม่
+        lineupBox.repaint();                                 // วาดใหม่บนจอ
     }
 }
