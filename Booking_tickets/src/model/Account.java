@@ -55,14 +55,17 @@ public record Account(String username, int balance, LocalDateTime memberUntil) {
 
     /** เงินเริ่มต้นของผู้ใช้ที่สมัครใหม่ */
     private static final int STARTING_BALANCE = 0;
+    // 3 ค่าข้างล่างที่เป็น public (MIN_TOP_UP, MAX_TOP_UP, MEMBERSHIP_DAYS) เพื่อให้หน้าจออ่านไปเขียนข้อความได้
+    //   เช่น "Select or enter amount (1 - 5,000 THB)", "Fee: 99 THB / 30 Days" เปลี่ยนกฎที่นี่แล้วข้อความบนจอเปลี่ยนตาม
+    //   static final int = ค่าคงที่ ไฟล์อื่นอ่านได้อย่างเดียว เปลี่ยนค่าไม่ได้ กฎจึงยังอยู่ที่นี่ที่เดียว
     /** เติมเงินได้ต่ำสุดครั้งละกี่บาท */
-    private static final int MIN_TOP_UP = 1;
+    public static final int MIN_TOP_UP = 1;
     /** เติมเงินได้สูงสุดครั้งละกี่บาท */
-    private static final int MAX_TOP_UP = 5000;
+    public static final int MAX_TOP_UP = 5000;
     /** จ่ายเงินต่ำสุดครั้งละกี่บาท (จ่าย 0 หรือติดลบไม่ได้) */
     private static final int MIN_PAYMENT = 1;
     /** สมัครสมาชิก 1 ครั้งได้กี่วัน (นับเต็ม 24 ชั่วโมงต่อวัน จากเวลาที่สมัคร) */
-    private static final int MEMBERSHIP_DAYS = 30;
+    public static final int MEMBERSHIP_DAYS = 30;
 
     /**
      * สร้างบัญชี และตรวจค่าก่อนเก็บ
@@ -159,7 +162,7 @@ public record Account(String username, int balance, LocalDateTime memberUntil) {
      *   1. ถ้า amount น้อยกว่า 1 หรือเกิน 5,000 → throw
      *   2. สร้าง Account ตัวใหม่ เงิน = balance + amount ค่าอื่นเหมือนเดิม
      *
-     * หน้าจอตรวจค่าก่อนอยู่แล้ว (ช่องขึ้นแดง) แต่ตรงนี้ตรวจซ้ำ กันโค้ดส่วนอื่นเรียกผิด
+     * ตัวตรวจจริงอยู่ตรงนี้ที่เดียว หน้าจอเติมเงินแค่เอา MIN_TOP_UP / MAX_TOP_UP ไปเขียนข้อความ แล้วโชว์ error ที่ throw จากตรงนี้
      *
      * ตัวอย่าง (balance = 0):
      *   topUp(300)  → Account เงิน 300
