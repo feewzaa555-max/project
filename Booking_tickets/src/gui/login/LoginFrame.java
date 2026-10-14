@@ -293,7 +293,7 @@ public final class LoginFrame extends JFrame {   // public เพราะ Admin
         // ให้ปุ่ม ช่อง กล่องแจ้ง หน้าตาแบบเครื่องที่รัน (Windows) เหมือนของเดิม ทุกหน้าที่เปิดต่อจากนี้ใช้แบบเดียวกัน
         //   UIManager.getSystemLookAndFeelClassName() = ชื่อหน้าตาของเครื่องนี้
         //   UIManager.setLookAndFeel(ชื่อ) = ใช้หน้าตานั้น
-        try {
+       /*  try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
         } catch (ReflectiveOperationException | UnsupportedLookAndFeelException e) {
             // | = จับได้ทั้ง 2 แบบในก้อนเดียว (setLookAndFeel ประกาศว่าอาจโยน 2 แบบนี้ เป็น checked ต้องจัดการ)
@@ -301,7 +301,7 @@ public final class LoginFrame extends JFrame {   // public เพราะ Admin
             //   UnsupportedLookAndFeelException = เครื่องนี้ใช้หน้าตานั้นไม่ได้
             // หาหน้าตาของเครื่องไม่เจอ / ใช้ไม่ได้ → ใช้หน้าตาปกติของ Java แทน โปรแกรมยังทำงานต่อได้ (SC2 หน้า 11)
             System.err.println("Cannot use system look and feel: " + e.getMessage());   // แจ้งใน console สีแดง ไม่เด้งกล่อง
-        }
+        }*/
 
         // SwingUtilities.invokeLater(คำสั่ง) = ให้ Swing สร้างหน้าต่างในเธรดของหน้าจอ (กฎของ Swing)
         // AppServices.create() = สร้างของหลังบ้าน 1 ชุด หาโฟลเดอร์ data เอง (AppServices.java บรรทัด 183)
