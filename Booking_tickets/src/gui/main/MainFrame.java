@@ -40,7 +40,6 @@
 
 package gui.main;
 
-import gui.SeatFrame;                // หน้าเลือกที่นั่ง (โฟลเดอร์ gui) เปิดตอนลูกค้ากดรอบฉาย
 import gui.login.LoginFrame;         // หน้า Login ตัวใหม่ เปิดตอนกด Logout
 import java.awt.*;                   // BorderLayout, Component, Dimension, Font, Color
 import java.io.IOException;          // error ตอนอ่านไฟล์หนัง / รอบฉาย / บัญชีไม่ได้
@@ -66,7 +65,7 @@ public final class MainFrame extends JFrame {
 
     /**
      * เปิดหน้าลูกค้า
-     * public เพราะ LoginFrame (gui.login) และ SeatFrame (gui) อยู่คนละ package ต้อง new หน้านี้
+     * public เพราะ LoginFrame (gui.login) อยู่คนละ package ต้อง new หน้านี้ (SeatFrame อยู่ gui.main เดียวกัน)
      *
      * @param user ลูกค้าที่ login แล้ว ห้าม null และต้องไม่ใช่ ADMIN
      * @param app  ของหลังบ้านชุดเดียวกับทั้งโปรแกรม ห้าม null
@@ -201,9 +200,14 @@ public final class MainFrame extends JFrame {
     }
 
     // ⑤ ลูกค้ากดรอบ → เปิดหน้าเลือกที่นั่งของรอบนั้น แล้วปิดหน้านี้ (เหมือนของเดิม)
+    //   SeatFrame อยู่ gui.main เดียวกัน ไม่ต้อง import / อ่านที่นั่งที่จองแล้วไม่ได้ → บอก error อยู่หน้าเดิม
     private void openSeats() {
-        new SeatFrame(user, app, showtimeRow.picked()).setVisible(true);
-        dispose();
+        try {
+            new SeatFrame(user, app, showtimeRow.picked()).setVisible(true);
+            dispose();
+        } catch (IOException e) {
+            showError("Cannot load booked seats: " + e.getMessage());
+        }
     }
 
     // ⑤ กล่องสมัครสมาชิก: เสร็จ → refreshTopBar / เงินไม่พอแล้วกด Yes → openTopUp
