@@ -1,4 +1,4 @@
-//CsvMovieRepository <- อ่านหนัง ตารางฉาย และหนังที่ฉายแต่ละวัน (lineup) จากไฟล์ CSV และบันทึก lineup / หนังเรื่องใหม่
+//CsvMovieRepository <- อ่านหนัง ตารางฉาย และหนังที่ฉายแต่ละวัน (lineup) จากไฟล์ CSV และบันทึก lineup / เพิ่มหนัง / ลบหนัง
 //ตัวอย่างไฟล์ดูได้ที่ Booking_tickets/data/movies.csv, schedule.csv และ lineup.csv
 /*
     ทำไมต้องมี 3 ไฟล์:
@@ -236,6 +236,51 @@ public class CsvMovieRepository implements MovieRepository {
     }
 
     /**
+     * หาทุกวันที่ที่หนังเรื่องนี้อยู่ใน lineup.csv เพื่อให้ AdminService เช็กก่อนลบหนัง
+     * ทำงาน: อ่าน lineup.csv ทีละบรรทัด (ข้ามบรรทัดว่าง) → แยกวันที่กับรายการรหัส
+     *        → รหัสตัวไหนตรงกับ movieId → เก็บวันที่ของบรรทัดนั้น
+     * ดูทุกบรรทัด รวมวันที่ผ่านไปแล้ว เพราะ findLineupOn ตรวจรหัสหนังทุกบรรทัด
+     *   ถ้าลบหนังที่อยู่ในบรรทัดเก่า บรรทัดนั้นจะ error แล้วหน้าลูกค้าเปิดรอบฉายไม่ได้ทุกวัน
+     * เช่น lineup.csv มี "2026-10-01,M1;M2;M3;M4;M5" กับ "2026-10-16,M6;M7;M8;M9;M10"
+     *      findLineupDatesOf("M3")  → [2026-10-01]
+     *      findLineupDatesOf("M6")  → [2026-10-16]
+     *      findLineupDatesOf("M15") → [] (ไม่เคยอยู่ใน lineup ลบได้)
+     *      findLineupDatesOf("M1")  ไม่ไปเจอ "M15" เพราะเทียบทั้งรหัส ไม่ใช่ดูแค่ขึ้นต้น
+     *
+     * @param movieId รหัสหนัง เช่น "M3" ห้าม null
+     * @return List<LocalDate> วันที่ที่มีหนังเรื่องนี้ เรียงตามลำดับในไฟล์ หรือรายการว่าง
+     * @throws IOException ถ้าไม่มีไฟล์ lineup.csv หรือบรรทัดผิดรูปแบบ (จำนวนช่อง / วันที่)
+     * @throws IllegalArgumentException ถ้า movieId เป็น null
+     */
+    @Override
+    public List<LocalDate> findLineupDatesOf(String movieId) throws IOException {
+        if (movieId == null) {
+            throw new IllegalArgumentException("movieId must not be null");
+        }
+        List<LocalDate> dates = new ArrayList<>(); // เริ่มจากรายการเปล่า []
+        int lineNumber = 0;                        // นับทุกบรรทัด ให้ error บอกเลขบรรทัดตรงกับในไฟล์
+        for (String line : readLines(lineupFile)) {
+            lineNumber++;
+            if (line.isBlank()) {
+                continue;
+            }
+            // 1. แยกวันที่ออกจากรายการหนัง "2026-10-01,M1;M2;M3;M4;M5" → ["2026-10-01", "M1;M2;M3;M4;M5"]
+            String[] parts = line.split(",");
+            if (parts.length != LINEUP_COLUMNS) {
+                throw error(lineupFile, lineNumber, "Must have " + LINEUP_COLUMNS + " columns: date, movieIds");
+            }
+            // 2. ไล่รหัสทีละตัว "M1;M2;M3" → ["M1", "M2", "M3"] เจอตัวที่ตรงพอดี → จำวันที่ของบรรทัดนี้
+            for (String rawId : parts[LINEUP_MOVIES].split(LINEUP_MOVIE_SEPARATOR)) {
+                if (rawId.trim().equals(movieId)) {
+                    dates.add(parseLineupDate(parts[LINEUP_DATE], lineNumber));
+                    break; // บรรทัดเดียวกันไม่ต้องเก็บวันที่ซ้ำ ไปบรรทัดถัดไป
+                }
+            }
+        }
+        return dates;
+    }
+
+    /**
      * ให้ admin บันทึกว่าวันที่ date ฉายหนังเรื่องอะไร ถ้าวันเดิมบันทึกซ้ำ ให้เขียนทับของเดิม
      * ทำงาน: อ่านบรรทัดเดิม → เก็บทุกบรรทัดยกเว้นของวันเดียวกัน → ต่อท้ายบรรทัดใหม่ → เขียนกลับทั้งไฟล์
      * เช่น saveLineup(2026-10-09, [M6, M9, M10, M11, M15])
@@ -334,6 +379,44 @@ public class CsvMovieRepository implements MovieRepository {
     }
 
     /**
+     * ให้ admin ลบหนัง 1 เรื่องออกจาก movies.csv (เรื่องอื่นอยู่ครบ ลำดับเดิม)
+     * ทำงาน: อ่านหนังเดิมทั้งหมด (findAll) เช็กว่ามีรหัสนี้จริง
+     *        → เก็บทุกบรรทัดยกเว้นบรรทัดของรหัสนี้ (ทิ้งบรรทัดว่างด้วย) → เขียนกลับทั้งไฟล์ (แบบเดียวกับ addMovie)
+     * เช่น deleteMovie("M15") → บรรทัด "M15,คู่แรด,110,posters/m15.jpg" หายไป เหลือ M1–M14
+     *      deleteMovie("M1")  → ลบแค่ M1 ไม่ลบ M10–M15 เพราะเทียบรหัสทั้งช่อง ไม่ได้ดูแค่ขึ้นต้น
+     *      deleteMovie("M99") → ไม่มี → IllegalArgumentException "Movie ID M99 not found"
+     * ไม่ได้เช็กว่าหนังอยู่ใน lineup ไหม หรือต้องเหลือกี่เรื่อง (กฎของ admin อยู่ที่ AdminService)
+     *
+     * @param movieId รหัสหนังที่จะลบ เช่น "M15" ห้าม null ห้ามว่าง
+     * @throws IOException ถ้าไม่มีไฟล์ อ่าน/เขียนไม่ได้ หรือข้อมูลเดิมในไฟล์ผิด
+     * @throws IllegalArgumentException ถ้า movieId เป็น null / ว่าง หรือไม่มีหนังรหัสนี้
+     */
+    @Override
+    public void deleteMovie(String movieId) throws IOException {
+        if (movieId == null || movieId.isBlank()) {
+            throw new IllegalArgumentException("movieId must not be empty");
+        }
+        String id = movieId.trim();
+        // 1. ต้องมีหนังรหัสนี้จริง (findAll() เช็กด้วยว่าไฟล์เดิมไม่ผิด ก่อนจะเขียนทับ)
+        if (findMovie(findAll(), id) == null) {
+            throw new IllegalArgumentException("Movie ID " + id + " not found");
+        }
+        // 2. เก็บทุกบรรทัด ยกเว้นบรรทัดที่ช่องแรก (รหัส) ตรงกับ id และบรรทัดว่าง
+        //    "M15,คู่แรด,110,posters/m15.jpg".split(",")[0] → "M15" ตรง → ไม่เก็บ
+        List<String> kept = new ArrayList<>();
+        for (String line : readLines(moviesFile)) {
+            if (line.isBlank()) {
+                continue;
+            }
+            String lineId = line.split(",")[MOVIE_ID].trim();
+            if (!lineId.equals(id)) {
+                kept.add(line);
+            }
+        }
+        Files.write(moviesFile, kept, StandardCharsets.UTF_8);   // เขียนกลับทั้งไฟล์
+    }
+
+    /**
      * อ่านทุกบรรทัดในไฟล์ ใช้ร่วมกันทุกเมธอดเพื่อไม่ต้องเขียนโค้ดอ่านไฟล์ซ้ำ
      * ถ้าไม่มีไฟล์ โยน IOException บอก path เต็ม เพื่อให้รู้ว่าโปรแกรมไปหาไฟล์ที่ไหน
      *
@@ -393,6 +476,25 @@ public class CsvMovieRepository implements MovieRepository {
     }
 
     /**
+     * แปลงช่องวันที่ของ lineup.csv เป็นวันที่ เพื่อให้ findLineupDatesOf คืนเป็นวันที่ได้
+     * เช่น "2026-10-01" → 2026-10-01 / " 2026-10-01 " → 2026-10-01 (ตัดเว้นวรรคก่อน)
+     *      "1/10/2026"  → error บอกไฟล์และเลขบรรทัด
+     *
+     * @param text ช่องวันที่ใน lineup.csv เช่น "2026-10-01"
+     * @param lineNumber เลขบรรทัด ใช้บอกใน error
+     * @return LocalDate วันที่ของบรรทัดนั้น
+     * @throws IOException ถ้าวันที่ไม่ใช่รูปแบบ yyyy-MM-dd
+     */
+    private LocalDate parseLineupDate(String text, int lineNumber) throws IOException {
+        try {
+            return LocalDate.parse(text.trim());
+        } catch (DateTimeParseException e) {
+            throw error(lineupFile, lineNumber,
+                    "Date must be in yyyy-MM-dd format e.g. 2026-10-09, but found " + text.trim());
+        }
+    }
+
+    /**
      * แปลงรายการรหัสหนังใน lineup.csv เป็นหนังจริง เพื่อให้ findShowtimesOn หยิบหนังตามลำดับไปสร้างรอบได้
      * เช่น "M6;M9;M10" → [Hello World, Inception, Interstellar]
      *      "M6;M99"    → ไม่มีหนังรหัส M99 → error (กัน admin ตั้งหนังที่ไม่มีอยู่จริง)
@@ -417,9 +519,18 @@ public class CsvMovieRepository implements MovieRepository {
         return lineup;
     }
 
-    // แปลง 1 บรรทัดของ schedule.csv เป็นรอบจริงของวันที่ date
-    // เพื่อ: schedule.csv บอกแค่ "เรื่องที่ 1" ต้องเอาไปหยิบหนังจาก lineup ของวันนั้นถึงจะรู้ว่าฉายอะไร
-    // เช่น "1,08:45,1" + date 2026-10-09 + lineup [M6, M9, ...] → Hello World โรง 1 วันที่ 9 เวลา 08:45
+    /**
+     * แปลง 1 บรรทัดของ schedule.csv เป็นรอบจริงของวันที่ date
+     * เพื่อ: schedule.csv บอกแค่ "เรื่องที่ 1" ต้องเอาไปหยิบหนังจาก lineup ของวันนั้นถึงจะรู้ว่าฉายอะไร
+     * เช่น "1,08:45,1" + date 2026-10-09 + lineup [M6, M9, ...] → Hello World โรง 1 วันที่ 9 เวลา 08:45
+     *
+     * @param line 1 บรรทัดของ schedule.csv เช่น "1,08:45,1"
+     * @param lineNumber เลขบรรทัด ใช้บอกใน error
+     * @param date วันที่ของรอบนี้ เช่น 2026-10-09
+     * @param lineup หนังของวันนั้นเรียงตามเรื่องที่ 1–5 เช่น [M6, M9, M10, M11, M15]
+     * @return Showtime รอบฉายจริง เช่น Hello World โรง 1 วันที่ 9/10 เวลา 08:45
+     * @throws IOException ถ้าบรรทัดผิดรูปแบบ (จำนวนช่อง, โรง, เวลา, เรื่องที่) หรือรอบผิดกฎของ Showtime
+     */
     private Showtime parseShowtime(String line, int lineNumber, LocalDate date, List<Movie> lineup)
             throws IOException {
         // 1. ตัดตรง , → ["1", "08:45", "1"]
@@ -480,7 +591,8 @@ public class CsvMovieRepository implements MovieRepository {
      * หาหนังจากรหัส เพื่อแปลงรหัสในไฟล์ (เช่น "M2") เป็นหนังจริง
      * ไล่ทีละเรื่อง เจอคืนหนังเรื่องนั้นทันที วนหมดแล้วไม่เจอคืน null
      *                        findMovie(movies, "M99") → ไม่มี → คืน null
-     * ใช้ 3 ที่: findAll() เช็กรหัสซ้ำ / parseLineupMovies() แปลงรหัสใน lineup / addMovie() เช็กรหัสซ้ำก่อนเพิ่ม
+     * ใช้ 4 ที่: findAll() เช็กรหัสซ้ำ / parseLineupMovies() แปลงรหัสใน lineup / addMovie() เช็กรหัสซ้ำก่อนเพิ่ม
+ *            / deleteMovie() เช็กว่ามีหนังที่จะลบจริง
      *
      * @param movies รายการหนังที่จะค้น
      * @param id รหัสที่หา เช่น "M2"

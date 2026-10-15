@@ -1,10 +1,11 @@
-//AdminService <- ตัวที่หน้า admin คุยด้วย ให้ admin เลือกหนัง 5 เรื่องที่จะฉายพรุ่งนี้ (lineup.csv) และเพิ่มหนังเรื่องใหม่ (movies.csv)
+//AdminService <- ตัวที่หน้า admin คุยด้วย ให้ admin เลือกหนัง 5 เรื่องที่จะฉายพรุ่งนี้ (lineup.csv) เพิ่มหนังเรื่องใหม่ และลบหนัง (movies.csv)
 /*
-    หน้า admin ใช้ 4 เมธอดนี้:
+    หน้า admin ใช้ 5 เมธอดนี้:
     tomorrowLineup()                   → หนัง 5 เรื่องที่จะฉายพรุ่งนี้ ใช้โชว์ว่าตอนนี้ตั้งไว้เป็นเรื่องอะไร
     setTomorrowLineup(admin, หนัง 5 เรื่อง) → เช็กกฎ แล้วบันทึกเป็นชุดหนังของพรุ่งนี้
     tomorrow()                         → วันที่ของพรุ่งนี้ ใช้เขียน "Showing on 09/10/2026"
     addMovie(admin, ชื่อ, นาที, ไฟล์รูป)    → เช็กกฎ ออกรหัสใหม่ (M16) บันทึกลง movies.csv และ copy รูปโปสเตอร์
+    deleteMovie(admin, รหัสหนัง)          → เช็กกฎ (เกิน 10 เรื่อง, ไม่อยู่ใน lineup) ลบออกจาก movies.csv และลบรูปโปสเตอร์
 
     ทำไมแยกเป็น class ใหม่ ไม่ใส่ใน MovieService:
         MovieService เป็นของหน้าลูกค้า (ดูหนัง ดูรอบ) ส่วนนี้เป็นงานของ admin (ตั้งหนังที่จะฉาย)
@@ -24,15 +25,19 @@
         adminService.addMovie(admin, "Dune: Part Two", 166, Path.of("C:/Users/me/Pictures/dune.jpg"));
                                                                     // movies.csv ได้บรรทัด M16,Dune: Part Two,166,posters/m16.jpg
                                                                     // รูป dune.jpg ถูก copy ไปเป็น data/posters/m16.jpg
+
+        adminService.deleteMovie(admin, "M16");                     // บรรทัด M16 หายจาก movies.csv, ลบ data/posters/m16.jpg
+        adminService.deleteMovie(admin, "M3");                      // M3 อยู่ใน lineup 2026-10-01 → throw ลบไม่ได้
  */
 
 package service;
 
 import java.io.IOException;              // error ตอนอ่าน/เขียน movies.csv / lineup.csv / copy รูปไม่ได้ (ส่งต่อให้หน้าจอ)
-import java.nio.file.Files;              // คำสั่ง copy ไฟล์รูป / สร้างโฟลเดอร์ posters / เช็กว่ามีไฟล์ไหม
+import java.nio.file.Files;              // คำสั่ง copy ไฟล์รูป / สร้างโฟลเดอร์ posters / เช็กว่ามีไฟล์ไหม / ลบไฟล์รูปตอนลบหนัง
 import java.nio.file.Path;               // ตำแหน่งไฟล์ เช่น โฟลเดอร์ data, ไฟล์รูปที่ admin เลือก
 import java.nio.file.StandardCopyOption; // REPLACE_EXISTING = copy ทับได้ถ้ามีไฟล์ชื่อเดียวกันค้างอยู่
 import java.time.LocalDate;              // วันที่อย่างเดียว ใช้หาวันพรุ่งนี้ เช่น 2026-10-09
+import java.util.Collections;            // Collections.max = หาวันที่ล่าสุดที่หนังอยู่ใน lineup เอาไปบอกในข้อความ error ตอนลบไม่ได้
 import java.util.HashSet;                // เก็บรหัสหนังแบบไม่ซ้ำ ใช้เช็กเลือกเรื่องซ้ำ และเช็กว่าหนังมีจริง
 import java.util.List;                   // ชนิดของรายการหนังที่รับเข้ามา / คืนออกไป
 import java.util.Locale;                 // Locale.ROOT = แปลงตัวพิมพ์เล็ก/ใหญ่แบบเดียวกันทุกเครื่อง (เทียบชื่อหนัง, นามสกุลไฟล์)
@@ -42,10 +47,11 @@ import model.User;                       // ผู้ใช้ที่ login �
 import repository.MovieRepository;       // ที่เก็บหนัง/ชุดหนังที่ฉาย (interface) รับเข้ามาทาง constructor
 
 /**
- * บริการของ admin: ตั้งหนังที่จะฉายพรุ่งนี้ และเพิ่มหนังเรื่องใหม่
- * ข้อมูลหนังอ่าน/เขียนผ่าน MovieRepository และถามวันนี้จาก AppClock (ไฟล์ที่ทำเองมีแค่ copy รูปโปสเตอร์)
+ * บริการของ admin: ตั้งหนังที่จะฉายพรุ่งนี้ เพิ่มหนังเรื่องใหม่ และลบหนัง
+ * ข้อมูลหนังอ่าน/เขียนผ่าน MovieRepository และถามวันนี้จาก AppClock (ไฟล์ที่ทำเองมีแค่ copy / ลบรูปโปสเตอร์)
  * กฎการตั้งหนัง (ต้องเป็น admin, ครบ 5 เรื่อง, ไม่ซ้ำ, มีอยู่จริง)
- * และกฎการเพิ่มหนัง (ต้องเป็น admin, ชื่อไม่ว่าง/ไม่ซ้ำ, ความยาว, ชนิดรูป) อยู่ที่ class นี้ที่เดียว
+ * กฎการเพิ่มหนัง (ต้องเป็น admin, ชื่อไม่ว่าง/ไม่ซ้ำ, ความยาว, ชนิดรูป)
+ * และกฎการลบหนัง (ต้องเป็น admin, ต้องเหลืออย่างน้อย 10 เรื่อง, ไม่อยู่ใน lineup) อยู่ที่ class นี้ที่เดียว
  */
 public class AdminService {
 
@@ -60,6 +66,13 @@ public class AdminService {
      * ต้องเท่ากับจำนวนเรื่องใน schedule.csv (ช่อง slot มี 1–5) ถ้าเลือกไม่ครบ รอบของเรื่องที่ขาดจะหาหนังไม่เจอ
      */
     public static final int LINEUP_SIZE = 5;
+
+    /**
+     * จำนวนหนังน้อยสุดที่ต้องเหลือในระบบ มีเกินจำนวนนี้ถึงจะลบได้ (มี 11 → ลบได้ เหลือ 10 / มี 10 → ลบไม่ได้)
+     * ต้องไม่น้อยกว่า LINEUP_SIZE ไม่งั้น admin อาจเลือกหนังไม่ครบ 5 เรื่อง
+     * ตั้ง 10 = เลือก lineup ได้อย่างน้อย 2 ชุดไม่ซ้ำกัน
+     */
+    public static final int MIN_MOVIES = 10;
 
     /**
      * โฟลเดอร์เก็บรูปโปสเตอร์ (อยู่ในโฟลเดอร์ data) ใช้ 2 ที่ให้ตรงกัน:
@@ -296,6 +309,105 @@ public class AdminService {
             Files.copy(posterFile, target, StandardCopyOption.REPLACE_EXISTING);
         }
         return movie;
+    }
+
+    /**
+     * ลบหนัง 1 เรื่องออกจาก movies.csv (หน้า admin กด Delete Movie)
+     *
+     * วิธีทำงาน:
+     *   1. admin เป็น null / ไม่ใช่ admin → throw "Only admin can delete movies."
+     *   2. ไม่ได้เลือกหนัง (null / ว่าง) → throw "Please choose a movie to delete."
+     *   3. อ่านหนังทั้งหมด หาเรื่องที่จะลบ ไม่เจอ → throw "Movie M99 not found."
+     *   4. มีหนังไม่เกิน MIN_MOVIES (10) → throw "Cannot delete: at least 10 movies must remain (now 10)."
+     *   5. หนังเรื่องนี้อยู่ใน lineup วันไหน (รวมวันที่ผ่านไปแล้วและพรุ่งนี้) → throw
+     *      "Cannot delete M3: it is in the lineup on 2026-10-01."
+     *      เหตุผล: lineup.csv ถูกตรวจรหัสทุกบรรทัด ถ้าลบหนังที่อยู่ในบรรทัดไหน หน้าลูกค้าจะเปิดรอบฉายไม่ได้ทุกวัน
+     *      และหนังที่มีคนเคยจอง ต้องเคยอยู่ใน lineup มาก่อน ข้อนี้จึงกันประวัติการจองหาชื่อหนังไม่เจอไปด้วย
+     *   6. ผ่านหมด → movieRepository.deleteMovie(รหัส)
+     *   7. ลบไฟล์รูปโปสเตอร์ด้วย (deletePoster) เพราะถ้าเพิ่มหนังใหม่แล้วได้รหัสนี้อีก จะได้ไม่เห็นรูปของเรื่องเก่า
+     *
+     * ตัวอย่าง (มีหนัง M1–M15, lineup.csv มีแค่ 2026-10-01,M1;M2;M3;M4;M5):
+     *   deleteMovie(admin, "M15")    → ลบได้ คืน Movie(M15, คู่แรด, ...) + ลบ data/posters/m15.jpg
+     *   deleteMovie(admin, "M3")     → throw "Cannot delete M3: it is in the lineup on 2026-10-01."
+     *   deleteMovie(customer, "M15") → throw "Only admin can delete movies."
+     *   ลบจนเหลือ 10 เรื่องแล้วลบอีก  → throw "Cannot delete: at least 10 movies must remain (now 10)."
+     *
+     * @param admin   ผู้ใช้ที่ login แล้ว ต้องเป็น admin ห้าม null
+     * @param movieId รหัสหนังที่จะลบ เช่น "M15"
+     * @return Movie หนังเรื่องที่ถูกลบ (หน้าจอเอาชื่อไปบอก admin)
+     * @throws IOException ถ้าอ่าน/เขียน movies.csv / lineup.csv ไม่ได้ หรือลบไฟล์รูปไม่ได้
+     * @throws IllegalArgumentException ถ้าผิดกฎข้อ 1–5 (ข้อความภาษาอังกฤษ ให้หน้าจอโชว์ได้เลย)
+     */
+    public Movie deleteMovie(User admin, String movieId) throws IOException {
+        // 1. ต้องเป็น admin (กันที่นี่ด้วย ไม่พึ่งแค่หน้าจอ แบบเดียวกับ addMovie)
+        if (admin == null || !admin.isAdmin()) {
+            throw new IllegalArgumentException("Only admin can delete movies.");
+        }
+        // 2. ต้องเลือกหนัง
+        if (movieId == null || movieId.isBlank()) {
+            throw new IllegalArgumentException("Please choose a movie to delete.");
+        }
+        String id = movieId.trim();
+        // 3. หาเรื่องที่จะลบ (ใช้ตอนลบรูป และคืนให้หน้าจอบอกชื่อ)
+        List<Movie> movies = movieRepository.findAll();
+        Movie target = null;
+        for (Movie movie : movies) {
+            if (movie.id().equals(id)) {
+                target = movie;
+                break;
+            }
+        }
+        if (target == null) {
+            throw new IllegalArgumentException("Movie " + id + " not found.");
+        }
+        // 4. ต้องเหลืออย่างน้อย MIN_MOVIES เรื่องหลังลบ  มี 11 → ลบได้ / มี 10 → ลบไม่ได้
+        if (movies.size() <= MIN_MOVIES) {
+            throw new IllegalArgumentException("Cannot delete: at least " + MIN_MOVIES
+                    + " movies must remain (now " + movies.size() + ").");
+        }
+        // 5. ห้ามอยู่ใน lineup วันไหนเลย
+        //    findLineupDatesOf("M3") → [2026-10-01] / ไม่เคยอยู่ → []
+        //    Collections.max(วันที่ทั้งหมด) = วันล่าสุด เอาไปบอกในข้อความ (เช่น พรุ่งนี้ ที่ admin เพิ่งตั้ง)
+        List<LocalDate> lineupDates = movieRepository.findLineupDatesOf(id);
+        if (!lineupDates.isEmpty()) {
+            throw new IllegalArgumentException("Cannot delete " + id + ": it is in the lineup on "
+                    + Collections.max(lineupDates) + ".");
+        }
+        // 6. ลบออกจาก movies.csv
+        movieRepository.deleteMovie(id);
+        // 7. ลบไฟล์รูป (ถ้ามี) หลังลบในไฟล์สำเร็จแล้วเท่านั้น
+        deletePoster(target, movies);
+        return target;
+    }
+
+    /**
+     * ลบไฟล์รูปโปสเตอร์ของหนังที่เพิ่งลบ เช่น "posters/m15.jpg" → ลบ data/posters/m15.jpg
+     * ไม่ลบ ถ้า:
+     *   - ช่องรูปว่าง (หนังเรื่องนี้ไม่มีรูป)
+     *   - ไฟล์อยู่นอกโฟลเดอร์ data/posters (เช่นช่องรูปเขียน "../users.csv") กันลบไฟล์อื่นของโปรแกรม
+     *   - หนังเรื่องอื่นใช้รูปไฟล์เดียวกัน (ลบไปแล้วเรื่องนั้นจะไม่มีรูป)
+     * ไม่มีไฟล์อยู่แล้ว → ไม่ทำอะไร (Files.deleteIfExists ไม่ error)
+     *
+     * @param deleted หนังที่เพิ่งลบ (ใช้ช่อง posterPath)
+     * @param movies  หนังทั้งหมดก่อนลบ (ใช้เช็กว่ามีเรื่องอื่นใช้รูปเดียวกันไหม)
+     * @throws IOException ถ้าลบไฟล์ไม่ได้ เช่น ไฟล์ถูกเปิดค้างอยู่
+     */
+    private void deletePoster(Movie deleted, List<Movie> movies) throws IOException {
+        if (deleted.posterPath().isBlank()) {
+            return;
+        }
+        // normalize() = ตัด "." / ".." ออกก่อนเทียบ  data/posters/../users.csv → data/users.csv
+        Path postersFolder = dataFolder.resolve(POSTERS_FOLDER).normalize();
+        Path file = dataFolder.resolve(deleted.posterPath()).normalize();
+        if (!file.startsWith(postersFolder)) {
+            return;   // ไม่ได้อยู่ในโฟลเดอร์ posters → ไม่แตะ
+        }
+        for (Movie movie : movies) {
+            if (!movie.id().equals(deleted.id()) && movie.posterPath().equals(deleted.posterPath())) {
+                return;   // มีเรื่องอื่นใช้รูปนี้อยู่ → เก็บไว้
+            }
+        }
+        Files.deleteIfExists(file);
     }
 
     /**

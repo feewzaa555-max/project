@@ -1,11 +1,13 @@
 //เป็น interface ที่บอกแค่ว่า "ขอข้อมูลหนังกับรอบฉายได้ด้วยเมธอดอะไร" 
 /*
-    มี 5 เมธอด:
+    มี 7 เมธอด:
     findAll()                    คืนหนังทั้งหมด
     findShowtimesOn(date)        คืนรอบฉายทั้งหมดของวันนั้น
     findLineupOn(date)           คืนหนังที่ฉายวันนั้น เรียงตามช่อง 1, 2, 3, ...
+    findLineupDatesOf(movieId)   คืนทุกวันที่หนังเรื่องนี้อยู่ใน lineup (admin ใช้เช็กก่อนลบ)
     saveLineup(date, movies)     บันทึกว่าวันนั้นฉายหนังเรื่องไหนบ้าง (admin ใช้)
     addMovie(movie)              บันทึกหนังเรื่องใหม่ต่อท้ายรายชื่อหนัง (admin ใช้)
+    deleteMovie(movieId)         ลบหนัง 1 เรื่องออกจากรายชื่อหนัง (admin ใช้)
  */
 
 
@@ -55,6 +57,18 @@ public interface MovieRepository {
     List<Movie> findLineupOn(LocalDate date) throws IOException;
 
     /**
+     * ทุกวันที่ที่หนังเรื่องนี้อยู่ใน lineup (ทั้งวันที่ผ่านไปแล้ว วันนี้ และวันที่ตั้งไว้ล่วงหน้า)
+     * AdminService ใช้เช็กก่อนลบหนัง: ถ้าเคยอยู่ใน lineup วันไหน ลบไม่ได้
+     * (ลบไปแล้ว lineup วันนั้นจะอ้างรหัสหนังที่ไม่มีอยู่จริง แล้วอ่านรอบฉายไม่ได้ทุกวัน)
+     *
+     * @param movieId รหัสหนัง เช่น "M3" ห้าม null
+     * @return วันที่ที่มีหนังเรื่องนี้ เรียงตามลำดับในที่เก็บ หรือ List ว่างถ้าไม่เคยอยู่ใน lineup
+     * @throws IOException ถ้าอ่านข้อมูลไม่ได้ หรือข้อมูลในที่เก็บผิดรูปแบบ
+     * @throws IllegalArgumentException ถ้า movieId เป็น null
+     */
+    List<LocalDate> findLineupDatesOf(String movieId) throws IOException;
+
+    /**
      * บันทึกหนังที่จะฉายในวันที่ระบุ ถ้าวันนั้นเคยตั้งไว้แล้วจะเขียนทับของเดิม
      * ไม่ได้เช็กกฎ (เช่น ต้องกี่เรื่อง, แก้ได้แค่วันพรุ่งนี้) กฎอยู่ที่ AdminService
      *
@@ -75,4 +89,15 @@ public interface MovieRepository {
      * @throws IllegalArgumentException ถ้า movie เป็น null, รหัสซ้ำกับเรื่องที่มีอยู่ หรือมีตัวอักษรที่เก็บไม่ได้
      */
     void addMovie(Movie movie) throws IOException;
+
+    /**
+     * ลบหนัง 1 เรื่องออกจากรายชื่อหนัง (admin ลบหนัง) เรื่องอื่นไม่เปลี่ยน
+     * เช็กแค่ว่ามีหนังรหัสนี้อยู่จริง
+     * กฎอื่น (ใครลบได้, ต้องเหลือกี่เรื่อง, ห้ามอยู่ใน lineup) อยู่ที่ AdminService
+     *
+     * @param movieId รหัสหนังที่จะลบ เช่น "M15" ห้าม null ห้ามว่าง
+     * @throws IOException ถ้าอ่านหรือเขียนข้อมูลไม่ได้ หรือข้อมูลเดิมในที่เก็บผิดรูปแบบ
+     * @throws IllegalArgumentException ถ้า movieId เป็น null / ว่าง หรือไม่มีหนังรหัสนี้
+     */
+    void deleteMovie(String movieId) throws IOException;
 }

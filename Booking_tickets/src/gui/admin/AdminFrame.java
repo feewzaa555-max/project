@@ -1,4 +1,4 @@
-//AdminFrame <- หน้าต่างของ admin: เอาแถบบน (AdminTopBar) การ์ดเลือกหนัง (LineupPanel) การ์ดตั้งเวลา (ClockPanel) และปุ่มเพิ่มหนังใหม่ มาประกอบเป็นหน้าเดียว
+//AdminFrame <- หน้าต่างของ admin: เอาแถบบน (AdminTopBar) การ์ดเลือกหนัง (LineupPanel) การ์ดตั้งเวลา (ClockPanel) และปุ่มเพิ่ม/ลบหนัง มาประกอบเป็นหน้าเดียว
 /*
     หน้าตา (เลขตรงกับ ①–⑦ ในโค้ดข้างล่าง):
         ┌──────────────────────────────────────────────┐  ① หน้าต่าง 920 x 730 ชื่อ "KU CINEMA - Admin"
@@ -9,19 +9,23 @@
         │          └─────────────────────┘             │                ช่องว่าง 16 px
         │          ┌──── ClockPanel ─────┐             │                ClockPanel
         │          └─────────────────────┘             │                ช่องว่าง 12 px
-        │            [ + Add New Movie ]               │                ปุ่มเพิ่มหนังใหม่
+        │   [ + Add New Movie ]  [ - Delete Movie ]    │                ปุ่มเพิ่มหนัง / ลบหนัง (แถวเดียวกัน)
         └──────────────────────────────────────────────┘
         กด Logout → ⑤ ถามยืนยัน → ปิดหน้านี้ → เปิดหน้า Login
         กด Set / Reset ใน ClockPanel → ClockPanel บอกว่าเวลาเปลี่ยนแล้ว → ⑥ showLineup() ใส่ LineupPanel ตัวใหม่
                                       → Showing on เป็นวันนี้ (ตามเวลาใหม่) + 1
         กด + Add New Movie → ⑦ เปิดกล่อง AddMovieDialog → เพิ่มหนังสำเร็จ → ⑥ showLineup()
                                       → ช่อง Movie 1–5 มีหนังเรื่องใหม่ให้เลือก
+        กด - Delete Movie → ⑧ เลือกหนังที่จะลบ → ถามยืนยัน → AdminService.deleteMovie
+                                      → ลบสำเร็จ ⑥ showLineup() (ช่องเลือกไม่มีเรื่องนั้นแล้ว)
+                                      → ผิดกฎ (เหลือ 10 เรื่อง / อยู่ใน lineup) เด้งข้อความบอกเหตุผล ไม่ลบอะไร
 
-    ไฟล์นี้ทำแค่ 4 อย่าง:
+    ไฟล์นี้ทำแค่ 5 อย่าง:
       1. ประกอบหน้าต่าง (ขนาด, พื้นหลัง, วางแถบบน การ์ดเลือกหนัง การ์ดตั้งเวลา)
       2. ปุ่ม Logout: ถามยืนยัน → ปิดหน้านี้ → กลับหน้า Login
       3. เวลาเปลี่ยน → ใส่ LineupPanel ตัวใหม่ ข้อความ Showing on จะได้ตรงกับวันที่ที่ Save จะบันทึก
       4. ปุ่ม + Add New Movie → เปิดกล่องเพิ่มหนัง → เพิ่มเสร็จใส่ LineupPanel ตัวใหม่ (ช่องเลือกมีเรื่องใหม่)
+      5. ปุ่ม - Delete Movie → เลือกหนัง + ยืนยัน → ลบเสร็จใส่ LineupPanel ตัวใหม่ (กฎการลบอยู่ใน AdminService)
     ส่วนหน้าตาของแถบบนอยู่ใน AdminTopBar / การเลือกหนังอยู่ใน LineupPanel / การตั้งเวลาอยู่ใน ClockPanel
     / กล่องกรอกหนังใหม่อยู่ใน AddMovieDialog
 
@@ -39,9 +43,13 @@
 package gui.admin;
 
 import gui.login.LoginFrame;  // หน้า Login ตัวใหม่ (โฟลเดอร์ gui/login) กด Logout แล้วกลับไปหน้านี้ อยู่คนละ package เลยต้อง import
-import java.awt.*;            // BorderLayout = แบ่งบน/กลาง, GridBagLayout = วางการ์ดไว้กลางจอ, Dimension = ขนาดช่องว่าง, Color / Cursor / Component = สี เมาส์รูปมือ และการจัดกลางของปุ่ม + Add New Movie
-import javax.swing.*;         // JFrame = หน้าต่าง, JPanel = กล่อง, JOptionPane = กล่องถามยืนยัน Logout, Box/BoxLayout = เรียงการ์ดบนลงล่าง, JButton / BorderFactory = ปุ่ม + Add New Movie และกรอบของปุ่ม
+import java.awt.*;            // BorderLayout = แบ่งบน/กลาง, GridBagLayout = วางการ์ดไว้กลางจอ, FlowLayout = วางปุ่มเพิ่ม/ลบหนังเรียงกันตรงกลาง, Dimension = ขนาดช่องว่าง, Color / Cursor / Component = สี เมาส์รูปมือ และการจัดกลาง
+import java.io.IOException;   // error ตอนอ่าน/เขียน movies.csv ไม่ได้ ตอนลบหนัง (เอาไปโชว์ในกล่อง Error)
+import java.util.List;        // รายชื่อหนังทั้งหมดที่ใส่ในช่องเลือกตอนลบ (เขียนชัด ๆ เพราะ java.awt.* ก็มี List คนละตัว)
+import javax.swing.*;         // JFrame = หน้าต่าง, JPanel = กล่อง, JOptionPane = กล่องถามยืนยัน / แจ้งผล, Box/BoxLayout = เรียงการ์ดบนลงล่าง, JButton / BorderFactory = ปุ่มและกรอบ, JComboBox / JLabel = ช่องเลือกหนังที่จะลบ
+import model.Movie;           // หนัง 1 เรื่อง ในช่องเลือกตอนลบ และหนังที่ถูกลบ (เอาชื่อไปบอก admin)
 import model.User;            // admin ที่ login อยู่
+import service.AdminService;  // ใช้ค่าคงที่ MIN_MOVIES (10) เขียนกฎใต้ช่องเลือกตอนลบ ให้ตรงกับกฎจริง
 import service.AppServices;   // ของหลังบ้านชุดเดียวกับทั้งโปรแกรม
 
 public final class AdminFrame extends JFrame {
@@ -99,7 +107,7 @@ public final class AdminFrame extends JFrame {
         column.add(Box.createRigidArea(new Dimension(0, 16)));
         column.add(new ClockPanel(services.clock(), this::showLineup));
         column.add(Box.createRigidArea(new Dimension(0, 12)));   // ช่องว่าง 12 px ระหว่างการ์ดตั้งเวลากับปุ่ม
-        column.add(makeAddMovieButton());                        // ⑦ ปุ่ม + Add New Movie
+        column.add(makeMovieButtons());                          // ⑦ ⑧ ปุ่ม + Add New Movie / - Delete Movie (แถวเดียว ความสูงหน้าต่างเท่าเดิม)
 
         //    GridBagLayout ใส่ของชิ้นเดียว (column) → วางไว้กลางพื้นที่ ตามขนาดของมัน (560 x 566) ไม่ยืดเต็ม
         JPanel center = new JPanel(new GridBagLayout());
@@ -134,24 +142,43 @@ public final class AdminFrame extends JFrame {
     }
 
     /**
-     * ⑦ ปุ่ม "+ Add New Movie" พื้นขาว ตัวหนังสือ/กรอบฟ้า อยู่กลางคอลัมน์
-     * กดแล้วเปิดกล่องเพิ่มหนัง (openAddMovie)
+     * ⑦ ⑧ แถวปุ่ม "+ Add New Movie" (ฟ้า) กับ "- Delete Movie" (แดง) อยู่กลางคอลัมน์
+     * วางแถวเดียวกัน หน้าต่างจะได้สูงเท่าเดิม (ถ้าซ้อนเป็น 2 แถว ของจะล้นหน้าต่าง 730 px)
      *
-     * @return JButton ปุ่ม + Add New Movie ที่ผูกกับ openAddMovie แล้ว
+     * @return JPanel แถวที่มีปุ่มเพิ่มหนังและปุ่มลบหนัง
      */
-    private JButton makeAddMovieButton() {
-        JButton button = new JButton("+ Add New Movie");
+    private JPanel makeMovieButtons() {
+        // FlowLayout(CENTER, 12, 0) = เรียงซ้ายไปขวา จัดกลาง ห่างกัน 12 px ไม่มีช่องว่างบนล่าง
+        JPanel row = new JPanel(new FlowLayout(FlowLayout.CENTER, 12, 0));
+        row.setOpaque(false);                                   // โปร่งใส เห็นพื้นเทาข้างหลัง
+        row.add(makeOutlineButton("+ Add New Movie", AdminTheme.PRIMARY, this::openAddMovie));
+        row.add(makeOutlineButton("- Delete Movie", AdminTheme.LOGOUT_TEXT, this::openDeleteMovie)); // แดงเดียวกับ Logout = ปุ่มที่ต้องระวัง
+        // setAlignmentX(CENTER) = อยู่กลางคอลัมน์ (ใน BoxLayout ทุกชิ้นต้องตั้งเท่ากัน)
+        // setMaximumSize(ขนาดพอดี) = กัน BoxLayout ยืดแถวนี้ให้สูงเกินปุ่ม
+        row.setAlignmentX(Component.CENTER_ALIGNMENT);
+        row.setMaximumSize(row.getPreferredSize());
+        return row;
+    }
+
+    /**
+     * ปุ่มพื้นขาว ตัวหนังสือ/กรอบสีที่กำหนด (ใช้ทั้งปุ่มเพิ่มหนังและปุ่มลบหนัง หน้าตาจะได้เหมือนกัน)
+     *
+     * @param text   ข้อความบนปุ่ม เช่น "+ Add New Movie"
+     * @param color  สีตัวหนังสือและกรอบ เช่น AdminTheme.PRIMARY
+     * @param action สิ่งที่ทำตอนกดปุ่ม เช่น this::openAddMovie
+     * @return JButton ปุ่มที่ผูกกับ action แล้ว
+     */
+    private JButton makeOutlineButton(String text, Color color, Runnable action) {
+        JButton button = new JButton(text);
         button.setFont(AdminTheme.FONT_BUTTON);
-        button.setForeground(AdminTheme.PRIMARY);
+        button.setForeground(color);
         button.setBackground(Color.WHITE);
         button.setFocusPainted(false);                          // กดแล้วไม่วาดกรอบประรอบคำ
         button.setCursor(new Cursor(Cursor.HAND_CURSOR));       // ชี้แล้วเป็นรูปมือ
         button.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(AdminTheme.PRIMARY, 1, true),      // กรอบฟ้ามุมโค้ง
+                BorderFactory.createLineBorder(color, 1, true),                   // กรอบสีมุมโค้ง
                 BorderFactory.createEmptyBorder(8, 20, 8, 20)));                  // ที่ว่างระหว่างกรอบกับคำ
-        // setAlignmentX(CENTER) = อยู่กลางคอลัมน์ (ใน BoxLayout ทุกชิ้นต้องตั้งเท่ากัน JButton ปกติชิดซ้าย)
-        button.setAlignmentX(Component.CENTER_ALIGNMENT);
-        button.addActionListener(e -> openAddMovie());          // กดปุ่ม → openAddMovie()
+        button.addActionListener(e -> action.run());            // กดปุ่ม → ทำ action
         return button;
     }
 
@@ -169,8 +196,80 @@ public final class AdminFrame extends JFrame {
     }
 
     /**
+     * ⑧ ปุ่ม - Delete Movie: ให้เลือกหนัง → ถามยืนยัน → ลบ
+     * กฎว่าลบได้ไหม (เป็น admin, ต้องเหลืออย่างน้อย 10 เรื่อง, ไม่อยู่ใน lineup) อยู่ใน AdminService.deleteMovie ที่เดียว
+     * หน้านี้แค่เอาข้อความที่ AdminService throw มาโชว์ จะได้ไม่เขียนกฎซ้ำ 2 ที่
+     * เช่น เลือก M15 → ยืนยัน → "Movie deleted: M15 คู่แรด" → ช่องเลือก Movie 1–5 ไม่มี M15 แล้ว
+     *      เลือก M3  → ยืนยัน → "Cannot delete M3: it is in the lineup on 2026-10-01." ไม่ลบอะไร
+     */
+    private void openDeleteMovie() {
+        Movie chosen = chooseMovieToDelete();
+        if (chosen == null) {
+            return;   // กด Cancel / ปิดกล่อง / อ่านรายชื่อหนังไม่ได้ → ไม่ทำอะไร
+        }
+        // ถามยืนยันอีกครั้ง เพราะลบแล้วย้อนกลับไม่ได้
+        int confirm = JOptionPane.showConfirmDialog(this,
+                "Delete " + chosen.id() + " " + chosen.title() + "?\nThis cannot be undone.",
+                "Confirm Delete", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+        if (confirm != JOptionPane.YES_OPTION) {
+            return;
+        }
+        try {
+            Movie deleted = services.admin().deleteMovie(admin, chosen.id());
+            JOptionPane.showMessageDialog(this, "Movie deleted: " + deleted.id() + " " + deleted.title(),
+                    "Deleted", JOptionPane.INFORMATION_MESSAGE);   // หัวกล่องแบบเดียวกับ "Added" ตอนเพิ่มหนัง
+            showLineup();   // ⑥ ช่องเลือกหนังอ่าน movies.csv ใหม่ เรื่องที่ลบหายไป
+        } catch (IllegalArgumentException e) {
+            // ผิดกฎ → โชว์เหตุผลจาก AdminService (movies.csv ไม่ถูกแตะ)
+            JOptionPane.showMessageDialog(this, e.getMessage(), "Cannot delete movie", JOptionPane.WARNING_MESSAGE);
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(this, "Cannot delete movie: " + e.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    /**
+     * กล่องให้ admin เลือกหนังที่จะลบจากหนังทั้งหมด (ช่องเลือกหน้าตาเดียวกับ LineupPanel ใช้ MovieRenderer)
+     * ใต้ช่องเลือกบอกกฎไว้ admin จะได้รู้ก่อนกดว่าเรื่องไหนลบไม่ได้
+     *
+     * @return Movie เรื่องที่เลือกแล้วกด OK / กด Cancel ปิดกล่อง หรืออ่านรายชื่อหนังไม่ได้ → null
+     */
+    private Movie chooseMovieToDelete() {
+        List<Movie> movies;
+        try {
+            movies = services.movies().movies();   // หนังทั้งหมดใน movies.csv
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(this, "Cannot load movies: " + e.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
+            return null;
+        }
+        // movies.toArray(new Movie[0]) = แปลงเป็น array เพราะ JComboBox รับ array
+        JComboBox<Movie> box = new JComboBox<>(movies.toArray(new Movie[0]));
+        box.setFont(AdminTheme.FONT_TEXT);
+        box.setRenderer(new MovieRenderer());     // โชว์ "Inception  (148 min)" แบบเดียวกับช่องเลือกใน LineupPanel
+
+        JLabel rule = new JLabel("<html>At least " + AdminService.MIN_MOVIES + " movies must remain (now "
+                + movies.size() + ").<br>Movies used in any lineup cannot be deleted.</html>");
+        rule.setFont(AdminTheme.FONT_SMALL);
+        rule.setForeground(AdminTheme.TEXT_MUTED);
+
+        // panel = เรียงบนลงล่าง: ป้าย → ช่องเลือก → กฎ (BorderLayout ห่างแนวตั้ง 8 px)
+        JPanel panel = new JPanel(new BorderLayout(0, 8));
+        panel.add(new JLabel("Choose a movie to delete:"), BorderLayout.NORTH);
+        panel.add(box, BorderLayout.CENTER);
+        panel.add(rule, BorderLayout.SOUTH);
+
+        int choice = JOptionPane.showConfirmDialog(this, panel, "Delete Movie",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (choice != JOptionPane.OK_OPTION) {
+            return null;
+        }
+        return (Movie) box.getSelectedItem();     // ช่องเลือกเก็บ Movie ตัวจริง (ไม่มีหนังเลย → null)
+    }
+
+    /**
      * ⑥ ใส่ LineupPanel ตัวใหม่ลง lineupBox
-     * ใช้ 3 ที่: ตอนเปิดหน้า (②), ตอน ClockPanel บอกว่าเวลาเปลี่ยนแล้ว และตอนเพิ่มหนังใหม่สำเร็จ (⑦) (ส่งไปเป็น this::showLineup)
+     * ใช้ 4 ที่: ตอนเปิดหน้า (②), ตอน ClockPanel บอกว่าเวลาเปลี่ยนแล้ว, ตอนเพิ่มหนังใหม่สำเร็จ (⑦) และตอนลบหนังสำเร็จ (⑧) (ส่งไปเป็น this::showLineup)
      * ทำไมต้องสร้างใหม่: LineupPanel เขียน "Showing on 15/10/2026" ครั้งเดียวตอนสร้าง
      *   ไม่สร้างใหม่ → ตั้งเวลาเป็น 20/10 แล้วจอยังบอก 15/10 แต่กด Save จะบันทึกของ 21/10 (จอหลอก admin)
      *   สร้างใหม่    → ตัวใหม่ถาม tomorrow() ใหม่ → Showing on 21/10/2026 ตรงกับที่ Save จะบันทึก
