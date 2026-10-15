@@ -1,16 +1,17 @@
-//AdminService <- ตัวที่หน้า admin คุยด้วย ให้ admin เลือกหนัง 5 เรื่องที่จะฉายพรุ่งนี้ แล้วบันทึกลง lineup.csv
+//AdminService <- ตัวที่หน้า admin คุยด้วย ให้ admin เลือกหนัง 5 เรื่องที่จะฉายพรุ่งนี้ (lineup.csv) และเพิ่มหนังเรื่องใหม่ (movies.csv)
 /*
-    หน้า admin ใช้ 3 เมธอดนี้:
+    หน้า admin ใช้ 4 เมธอดนี้:
     tomorrowLineup()                   → หนัง 5 เรื่องที่จะฉายพรุ่งนี้ ใช้โชว์ว่าตอนนี้ตั้งไว้เป็นเรื่องอะไร
     setTomorrowLineup(admin, หนัง 5 เรื่อง) → เช็กกฎ แล้วบันทึกเป็นชุดหนังของพรุ่งนี้
     tomorrow()                         → วันที่ของพรุ่งนี้ ใช้เขียน "Showing on 09/10/2026"
+    addMovie(admin, ชื่อ, นาที, ไฟล์รูป)    → เช็กกฎ ออกรหัสใหม่ (M16) บันทึกลง movies.csv และ copy รูปโปสเตอร์
 
     ทำไมแยกเป็น class ใหม่ ไม่ใส่ใน MovieService:
         MovieService เป็นของหน้าลูกค้า (ดูหนัง ดูรอบ) ส่วนนี้เป็นงานของ admin (ตั้งหนังที่จะฉาย)
         แยกกันจะได้แก้กฎของ admin โดยไม่กระทบหน้าลูกค้า (SC5 SRP: 1 class มีเหตุผลให้แก้เรื่องเดียว)
 
     ตัวอย่างการใช้ (ในโปรแกรมจริง AppServices เป็นคนสร้างให้, สมมุติวันนี้ 8/10):
-        AdminService adminService = new AdminService(movieRepository, clock);
+        AdminService adminService = new AdminService(movieRepository, clock, Path.of("Booking_tickets/data"));
 
         User admin = authService.login("admin", "admin1");          // role ADMIN
         List<Movie> all = movieService.movies();                    // หนังทั้งหมด 15 เรื่อง ให้ admin เลือก
@@ -19,28 +20,38 @@
         adminService.tomorrowLineup();                              // [Hello World, Your Name, Weathering with You, Inception, Interstellar]
 
         adminService.setTomorrowLineup(customer, ...)               // ลูกค้าธรรมดา → throw "Only admin can set the lineup."
+
+        adminService.addMovie(admin, "Dune: Part Two", 166, Path.of("C:/Users/me/Pictures/dune.jpg"));
+                                                                    // movies.csv ได้บรรทัด M16,Dune: Part Two,166,posters/m16.jpg
+                                                                    // รูป dune.jpg ถูก copy ไปเป็น data/posters/m16.jpg
  */
 
 package service;
 
-import java.io.IOException;              // error ตอนอ่าน/เขียน movies.csv / lineup.csv ไม่ได้ (ส่งต่อจาก MovieRepository ให้หน้าจอ)
+import java.io.IOException;              // error ตอนอ่าน/เขียน movies.csv / lineup.csv / copy รูปไม่ได้ (ส่งต่อให้หน้าจอ)
+import java.nio.file.Files;              // คำสั่ง copy ไฟล์รูป / สร้างโฟลเดอร์ posters / เช็กว่ามีไฟล์ไหม
+import java.nio.file.Path;               // ตำแหน่งไฟล์ เช่น โฟลเดอร์ data, ไฟล์รูปที่ admin เลือก
+import java.nio.file.StandardCopyOption; // REPLACE_EXISTING = copy ทับได้ถ้ามีไฟล์ชื่อเดียวกันค้างอยู่
 import java.time.LocalDate;              // วันที่อย่างเดียว ใช้หาวันพรุ่งนี้ เช่น 2026-10-09
 import java.util.HashSet;                // เก็บรหัสหนังแบบไม่ซ้ำ ใช้เช็กเลือกเรื่องซ้ำ และเช็กว่าหนังมีจริง
 import java.util.List;                   // ชนิดของรายการหนังที่รับเข้ามา / คืนออกไป
+import java.util.Locale;                 // Locale.ROOT = แปลงตัวพิมพ์เล็ก/ใหญ่แบบเดียวกันทุกเครื่อง (เทียบชื่อหนัง, นามสกุลไฟล์)
 import java.util.Set;                    // ชนิดของกลุ่มที่ไม่มีตัวซ้ำ
 import model.Movie;                      // class หนัง อยู่คนละ package เลยต้อง import
 import model.User;                       // ผู้ใช้ที่ login แล้ว ใช้เช็กว่าเป็น admin ไหม
 import repository.MovieRepository;       // ที่เก็บหนัง/ชุดหนังที่ฉาย (interface) รับเข้ามาทาง constructor
 
 /**
- * บริการของ admin: ตั้งหนังที่จะฉายพรุ่งนี้
- * ไม่อ่าน/เขียนไฟล์เอง ใช้ MovieRepository และถามวันนี้จาก AppClock
- * กฎการตั้งหนัง (ต้องเป็น admin, ครบ 5 เรื่อง, ไม่ซ้ำ, มีอยู่จริง) อยู่ที่ class นี้ที่เดียว
+ * บริการของ admin: ตั้งหนังที่จะฉายพรุ่งนี้ และเพิ่มหนังเรื่องใหม่
+ * ข้อมูลหนังอ่าน/เขียนผ่าน MovieRepository และถามวันนี้จาก AppClock (ไฟล์ที่ทำเองมีแค่ copy รูปโปสเตอร์)
+ * กฎการตั้งหนัง (ต้องเป็น admin, ครบ 5 เรื่อง, ไม่ซ้ำ, มีอยู่จริง)
+ * และกฎการเพิ่มหนัง (ต้องเป็น admin, ชื่อไม่ว่าง/ไม่ซ้ำ, ความยาว, ชนิดรูป) อยู่ที่ class นี้ที่เดียว
  */
 public class AdminService {
 
-    // AF: บริการของ admin ที่อ่าน/บันทึกชุดหนังผ่าน movieRepository และรู้วันนี้จาก clock
-    // RI: movieRepository และ clock ไม่เป็น null
+    // AF: บริการของ admin ที่อ่าน/บันทึกหนังและชุดหนังผ่าน movieRepository, รู้วันนี้จาก clock
+    //     และเก็บรูปโปสเตอร์ของหนังเรื่องใหม่ไว้ในโฟลเดอร์ dataFolder/posters
+    // RI: movieRepository, clock และ dataFolder ไม่เป็น null
     // Safety from rep exposure: field เป็น private final, List ที่คืนออกไปสร้างใหม่ทุกครั้ง (มาจาก repository)
     // Thread safety: ไม่มี field ที่แก้ค่าได้ (final ทั้งหมด), AppClock ล็อกของตัวเองอยู่แล้ว (SC7)
 
@@ -50,31 +61,52 @@ public class AdminService {
      */
     public static final int LINEUP_SIZE = 5;
 
+    /**
+     * โฟลเดอร์เก็บรูปโปสเตอร์ (อยู่ในโฟลเดอร์ data) ใช้ 2 ที่ให้ตรงกัน:
+     *   ช่องรูปใน movies.csv  "posters/m16.jpg"
+     *   ไฟล์จริงที่ copy ไปวาง  data/posters/m16.jpg
+     * หน้าลูกค้า (MovieRow) หารูปด้วย dataFolder + ช่องรูป จึงต้องเป็นชื่อเดียวกัน
+     */
+    private static final String POSTERS_FOLDER = "posters";
+    /** รหัสหนังขึ้นต้นด้วยตัวนี้ตามด้วยเลข เช่น M1, M15 → เรื่องใหม่ได้ M16 */
+    private static final String MOVIE_ID_PREFIX = "M";
+    /** นามสกุลรูปที่รับ (หน้าลูกค้าเปิดได้ทั้งคู่) */
+    private static final List<String> POSTER_TYPES = List.of("jpg", "jpeg", "png");
+
     private final MovieRepository movieRepository; // ที่เก็บหนังและชุดหนังที่ฉาย เช่น CsvMovieRepository
     private final AppClock clock;                  // นาฬิกาตัวเดียวของโปรแกรม ใช้รู้ว่าพรุ่งนี้คือวันไหน
+    private final Path dataFolder;                 // โฟลเดอร์ data เช่น Booking_tickets/data ใช้หาโฟลเดอร์ posters
 
     /**
      * รับที่เก็บข้อมูลกับนาฬิกาเข้ามาทาง constructor ไม่ new เอง (SC5 DIP)
      * ใช้ MovieRepository ตัวเดียวกับ MovieService (AppServices ส่งตัวเดียวกันมาให้)
      * admin ตั้งหนังแล้ว หน้าลูกค้าจะเห็นชุดใหม่ทันทีที่ถึงวันนั้น เพราะอ่านจากไฟล์เดียวกัน
      *
+     * dataFolder ใช้แค่ตอนเพิ่มหนัง: copy รูปโปสเตอร์ไปไว้ที่ dataFolder/posters
+     * (โฟลเดอร์เดียวกับที่หน้าลูกค้าใช้หารูป ผ่าน app.dataFolder())
+     *
      * ตัวอย่าง:
-     *   new AdminService(new CsvMovieRepository(moviesPath, schedulePath, lineupPath), new AppClock())
-     *   new AdminService(null, clock) → throw "movieRepository must not be null"
+     *   new AdminService(new CsvMovieRepository(moviesPath, schedulePath, lineupPath), new AppClock(), Path.of("Booking_tickets/data"))
+     *   new AdminService(null, clock, folder) → throw "movieRepository must not be null"
      *
      * @param movieRepository ที่เก็บหนังและชุดหนังที่ฉาย ห้าม null
      * @param clock           นาฬิกาของโปรแกรม ห้าม null
-     * @throws IllegalArgumentException ถ้า movieRepository หรือ clock เป็น null
+     * @param dataFolder      โฟลเดอร์ data (มีโฟลเดอร์ posters อยู่ข้างใน หรือจะสร้างให้ตอนเพิ่มหนัง) ห้าม null
+     * @throws IllegalArgumentException ถ้าค่าไหนเป็น null
      */
-    public AdminService(MovieRepository movieRepository, AppClock clock) {
+    public AdminService(MovieRepository movieRepository, AppClock clock, Path dataFolder) {
         if (movieRepository == null) {
             throw new IllegalArgumentException("movieRepository must not be null");
         }
         if (clock == null) {
             throw new IllegalArgumentException("clock must not be null");
         }
+        if (dataFolder == null) {
+            throw new IllegalArgumentException("dataFolder must not be null");
+        }
         this.movieRepository = movieRepository;
         this.clock = clock;
+        this.dataFolder = dataFolder;
         checkRep();
     }
 
@@ -174,6 +206,121 @@ public class AdminService {
     }
 
     /**
+     * เพิ่มหนังเรื่องใหม่ลง movies.csv (หน้า admin กด Add Movie)
+     * เพิ่มแล้วหนังเรื่องนี้จะอยู่ในรายการให้ admin เลือกเข้า lineup ได้ทันที (ยังไม่ฉายจนกว่าจะเลือก)
+     *
+     * วิธีทำงาน:
+     *   1. admin เป็น null / ไม่ใช่ admin → throw "Only admin can add movies."
+     *   2. ชื่อว่าง → throw "Please enter a movie title."
+     *      ตัดเว้นวรรคหน้าหลังก่อน "  Dune  " → "Dune"
+     *   3. ความยาวไม่อยู่ใน 1–180 → throw "Duration must be 1-180 minutes."
+     *      (180 มาจาก Movie.MAX_DURATION_MINUTES ที่เดียว หนังยาวกว่านี้รอบจะทับกัน)
+     *   4. มีไฟล์รูป แต่ไม่มีไฟล์นั้นจริง หรือไม่ใช่ .jpg/.jpeg/.png → throw
+     *   5. อ่านหนังเดิมทั้งหมด: ชื่อซ้ำ (ไม่สนตัวพิมพ์เล็กใหญ่) → throw "This movie already exists: M1"
+     *      (ถ้าปล่อย admin จะเห็น 2 เรื่องชื่อเดียวกันในช่องเลือก ไม่รู้ว่าอันไหนอันไหน)
+     *   6. ออกรหัสใหม่ = เลขมากสุดที่มี + 1 เช่น มีถึง M15 → M16
+     *   7. ช่องรูปใน movies.csv = "posters/m16" + นามสกุลรูป (ไม่ส่งรูป → "posters/m16.jpg"
+     *      หน้าลูกค้าหาไฟล์ไม่เจอจะโชว์การ์ดสีแทน และวางรูปชื่อนี้ทีหลังได้)
+     *   8. movieRepository.addMovie(...) บันทึก (ชื่อมี , จะโดนกันตรงนี้ เพราะเป็นกฎของไฟล์ CSV)
+     *   9. บันทึกสำเร็จแล้วค่อย copy รูป (ถ้าบันทึกไม่ผ่าน จะไม่มีรูปค้างในโฟลเดอร์)
+     *
+     * ตัวอย่าง (มีหนัง M1–M15):
+     *   addMovie(admin, "Dune: Part Two", 166, dune.jpg) → Movie(M16, Dune: Part Two, 166, posters/m16.jpg) + copy รูป
+     *   addMovie(admin, "Your Name 2", 110, null)         → Movie(M17, Your Name 2, 110, posters/m17.jpg) ไม่มีรูป
+     *   addMovie(customer, ...)                           → throw "Only admin can add movies."
+     *   addMovie(admin, "   ", 100, null)                 → throw "Please enter a movie title."
+     *   addMovie(admin, "Dune", 0, null)                  → throw "Duration must be 1-180 minutes."
+     *   addMovie(admin, "pacific rim", 131, null)         → throw "This movie already exists: M2"
+     *   addMovie(admin, "Dune", 166, notes.txt)           → throw "Poster must be a .jpg, .jpeg or .png file."
+     *
+     * @param admin      ผู้ใช้ที่ login แล้ว ต้องเป็น admin ห้าม null
+     * @param title      ชื่อหนัง ห้ามว่าง ห้ามซ้ำ ห้ามมี ,
+     * @param minutes    ความยาวหนังเป็นนาที 1–180
+     * @param posterFile ไฟล์รูปที่ admin เลือก (.jpg / .jpeg / .png) หรือ null ถ้าไม่ใส่รูป
+     * @return หนังเรื่องใหม่ที่บันทึกแล้ว
+     * @throws IOException ถ้าอ่าน/เขียน movies.csv ไม่ได้ หรือ copy รูปไม่ได้
+     * @throws IllegalArgumentException ถ้าผิดกฎข้อ 1–5 หรือชื่อมี , (ข้อความภาษาอังกฤษ ให้หน้าจอโชว์ได้เลย)
+     */
+    public Movie addMovie(User admin, String title, int minutes, Path posterFile) throws IOException {
+        // 1. ต้องเป็น admin (กันที่นี่ด้วย ไม่พึ่งแค่หน้าจอ แบบเดียวกับ setTomorrowLineup)
+        if (admin == null || !admin.isAdmin()) {
+            throw new IllegalArgumentException("Only admin can add movies.");
+        }
+        // 2. ชื่อต้องไม่ว่าง
+        if (title == null || title.isBlank()) {
+            throw new IllegalArgumentException("Please enter a movie title.");
+        }
+        String cleanTitle = title.trim();   // "  Dune  " → "Dune"
+        // 3. ความยาว 1–180 นาที (Movie ก็เช็ก แต่ข้อความของ Movie เป็นข้อความสำหรับโปรแกรมเมอร์ เลยเช็กก่อนให้ข้อความอ่านง่าย)
+        if (minutes < 1 || minutes > Movie.MAX_DURATION_MINUTES) {
+            throw new IllegalArgumentException("Duration must be 1-" + Movie.MAX_DURATION_MINUTES + " minutes.");
+        }
+        // 4. ไฟล์รูป (ถ้ามี) ต้องมีจริง และเป็นรูปที่หน้าลูกค้าเปิดได้
+        //    posterType(ไฟล์) = นามสกุลตัวเล็ก เช่น "C:/.../Dune.JPG" → "jpg"
+        String posterType = "jpg";          // ไม่ส่งรูป → ตั้งชื่อเผื่อไว้เป็น .jpg
+        if (posterFile != null) {
+            if (!Files.isRegularFile(posterFile)) {
+                throw new IllegalArgumentException("Poster file not found: " + posterFile);
+            }
+            posterType = posterType(posterFile);
+            if (!POSTER_TYPES.contains(posterType)) {
+                throw new IllegalArgumentException("Poster must be a .jpg, .jpeg or .png file.");
+            }
+        }
+        // 5 + 6. อ่านหนังเดิม: เช็กชื่อซ้ำ และหาเลขรหัสมากสุด
+        List<Movie> movies = movieRepository.findAll();
+        int maxNumber = 0;
+        for (Movie movie : movies) {
+            // equalsIgnoreCase = เทียบไม่สนตัวพิมพ์เล็กใหญ่ "pacific rim" กับ "Pacific Rim" → ซ้ำ
+            if (movie.title().trim().equalsIgnoreCase(cleanTitle)) {
+                throw new IllegalArgumentException("This movie already exists: " + movie.id());
+            }
+            maxNumber = Math.max(maxNumber, idNumber(movie.id()));   // M15 → 15
+        }
+        String id = MOVIE_ID_PREFIX + (maxNumber + 1);               // 15 + 1 → "M16"
+
+        // 7. ช่องรูปใน movies.csv เช่น "posters/m16.jpg" (ใช้ / เพราะเป็นข้อความในไฟล์ ใช้ได้ทั้ง Windows และเครื่องอื่น)
+        String posterPath = POSTERS_FOLDER + "/" + id.toLowerCase(Locale.ROOT) + "." + posterType;
+        Movie movie = new Movie(id, cleanTitle, minutes, posterPath);
+
+        // 8. บันทึกลง movies.csv (ชื่อมี , → repository throw IllegalArgumentException ไม่บันทึก)
+        movieRepository.addMovie(movie);
+
+        // 9. copy รูปไปไว้ที่ data/posters/m16.jpg ให้ตรงกับช่องรูปที่เพิ่งบันทึก
+        //    dataFolder.resolve("posters/m16.jpg") = data/posters/m16.jpg
+        //    createDirectories = ยังไม่มีโฟลเดอร์ posters ก็สร้างให้
+        //    REPLACE_EXISTING  = มีไฟล์ชื่อนี้ค้างอยู่ (เช่น เคยวางไว้เอง) → ทับด้วยรูปที่เพิ่งเลือก
+        if (posterFile != null) {
+            Path target = dataFolder.resolve(posterPath);
+            Files.createDirectories(target.getParent());
+            Files.copy(posterFile, target, StandardCopyOption.REPLACE_EXISTING);
+        }
+        return movie;
+    }
+
+    // นามสกุลไฟล์ตัวเล็ก เพื่อเช็กชนิดรูปและตั้งชื่อไฟล์ใหม่
+    // "dune.JPG" → "jpg" / "poster.final.png" → "png" (เอาหลังจุดตัวสุดท้าย) / "dune" (ไม่มีจุด) → ""
+    private static String posterType(Path file) {
+        String name = file.getFileName().toString();
+        int dot = name.lastIndexOf('.');     // ตำแหน่งจุดตัวสุดท้าย ไม่มีจุด → -1
+        return (dot < 0) ? "" : name.substring(dot + 1).toLowerCase(Locale.ROOT);
+    }
+
+    // เลขในรหัสหนัง เพื่อหาเลขมากสุดแล้วออกรหัสใหม่
+    // "M15" → 15 / "M2" → 2 / รหัสที่ไม่ใช่ M ตามด้วยเลข เช่น "X1", "M1a" → 0 (ไม่นับ)
+    // ใช้เลข ไม่ใช้เทียบข้อความ เพราะเทียบข้อความ "M9" จะมากกว่า "M15"
+    private static int idNumber(String id) {
+        if (!id.startsWith(MOVIE_ID_PREFIX)) {
+            return 0;
+        }
+        try {
+            return Integer.parseInt(id.substring(MOVIE_ID_PREFIX.length()));   // "M15" → "15" → 15
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    /**
      * รหัสหนังทั้งหมดใน movies.csv ใช้เช็กว่าหนังที่ admin เลือกมีอยู่จริง
      * เช่น {M1, M2, ..., M15}
      *
@@ -192,5 +339,6 @@ public class AdminService {
     private void checkRep() {
         assert movieRepository != null;
         assert clock != null;
+        assert dataFolder != null;
     }
 }

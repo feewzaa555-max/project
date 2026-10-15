@@ -13,7 +13,7 @@
       movies()    → MovieService    ใช้ในหน้าเลือกหนัง (หนัง, รอบ, รอบไหนยังจองได้)
       accounts()  → AccountService  ใช้แสดงเงินคงเหลือ, เติมเงิน, สมัครสมาชิก
       bookings()  → BookingService  ใช้ในหน้าเลือกที่นั่ง (ที่นั่งถูกจอง, ยอดเงิน, กดจอง) และหน้าประวัติ
-      admin()     → AdminService    ใช้ในหน้า admin (เลือกหนัง 5 เรื่องที่จะฉายพรุ่งนี้)
+      admin()     → AdminService    ใช้ในหน้า admin (เลือกหนัง 5 เรื่องที่จะฉายพรุ่งนี้, เพิ่มหนังเรื่องใหม่)
       layout()    → HallLayout      ใช้วาดผังที่นั่ง (แถว A–F, ทางเดินหลังที่นั่งเลข 5)
       clock()     → AppClock        ใช้ปุ่มตั้งเวลา / รีเซ็ตเวลาตอน demo (ทุกหน้าเห็นเวลาเดียวกัน)
       dataFolder()→ Path            โฟลเดอร์ data ที่ชุดนี้ใช้ ให้หน้าลูกค้าหารูปโปสเตอร์ (posters/m1.jpg) จากโฟลเดอร์เดียวกับไฟล์ CSV
@@ -94,7 +94,7 @@ public final class AppServices {
     private final AccountService accounts;
     /** บริการจองตั๋ว */
     private final BookingService bookings;
-    /** บริการของ admin: ตั้งหนังที่จะฉายพรุ่งนี้ */
+    /** บริการของ admin: ตั้งหนังที่จะฉายพรุ่งนี้ และเพิ่มหนังเรื่องใหม่ */
     private final AdminService admin;
     /** โฟลเดอร์ data ที่ชุดนี้อ่าน/เขียน เช่น Booking_tickets/data (เก็บไว้ให้หน้าจอหารูปโปสเตอร์) */
     private final Path dataFolder;
@@ -158,9 +158,10 @@ public final class AppServices {
         this.bookings = new BookingService(new CsvBookingRepository(dataFolder.resolve(BOOKINGS_FILE)),
                 movieRepository, accounts, new PriceCalculator(), layout, clock);
 
-        // บริการของ admin (หน้า admin เลือกหนัง 5 เรื่องที่จะฉายพรุ่งนี้)
-        // new AdminService(ตัวอ่านหนังตัวเดียวกับข้างบน, นาฬิกาตัวเดียวกัน ไว้รู้ว่าพรุ่งนี้คือวันไหน)
-        this.admin = new AdminService(movieRepository, clock);
+        // บริการของ admin (หน้า admin เลือกหนัง 5 เรื่องที่จะฉายพรุ่งนี้ และเพิ่มหนังเรื่องใหม่)
+        // new AdminService(ตัวอ่านหนังตัวเดียวกับข้างบน, นาฬิกาตัวเดียวกัน ไว้รู้ว่าพรุ่งนี้คือวันไหน,
+        //                  โฟลเดอร์ data ไว้ copy รูปโปสเตอร์ของหนังใหม่ไปที่ data/posters)
+        this.admin = new AdminService(movieRepository, clock, dataFolder);
 
         checkRep();
     }
