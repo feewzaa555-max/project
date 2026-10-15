@@ -1,10 +1,11 @@
 //เป็น interface ที่บอกแค่ว่า "ขอข้อมูลหนังกับรอบฉายได้ด้วยเมธอดอะไร" 
 /*
-    มี 4 เมธอด:
+    มี 5 เมธอด:
     findAll()                    คืนหนังทั้งหมด
     findShowtimesOn(date)        คืนรอบฉายทั้งหมดของวันนั้น
     findLineupOn(date)           คืนหนังที่ฉายวันนั้น เรียงตามช่อง 1, 2, 3, ...
     saveLineup(date, movies)     บันทึกว่าวันนั้นฉายหนังเรื่องไหนบ้าง (admin ใช้)
+    addMovie(movie)              บันทึกหนังเรื่องใหม่ต่อท้ายรายชื่อหนัง (admin ใช้)
  */
 
 
@@ -63,4 +64,15 @@ public interface MovieRepository {
      * @throws IllegalArgumentException ถ้า date หรือ movies เป็น null หรือ movies ว่าง
      */
     void saveLineup(LocalDate date, List<Movie> movies) throws IOException;
+
+    /**
+     * บันทึกหนังเรื่องใหม่ต่อท้ายรายชื่อหนัง (admin เพิ่มหนัง) เรื่องเดิมไม่เปลี่ยน
+     * เช็กแค่ว่าเก็บลงที่เก็บได้ (รหัสไม่ซ้ำ, ไม่มีตัวที่ทำให้ไฟล์พัง)
+     * กฎอื่น (ใครเพิ่มได้, ชื่อซ้ำ, ออกรหัสใหม่) อยู่ที่ AdminService
+     *
+     * @param movie หนังเรื่องใหม่ ห้าม null และรหัสต้องยังไม่มีในที่เก็บ
+     * @throws IOException ถ้าอ่านหรือเขียนข้อมูลไม่ได้ หรือข้อมูลเดิมในที่เก็บผิดรูปแบบ
+     * @throws IllegalArgumentException ถ้า movie เป็น null, รหัสซ้ำกับเรื่องที่มีอยู่ หรือมีตัวอักษรที่เก็บไม่ได้
+     */
+    void addMovie(Movie movie) throws IOException;
 }

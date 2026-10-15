@@ -1,4 +1,4 @@
-//CsvMovieRepository <- อ่านหนัง ตารางฉาย และหนังที่ฉายแต่ละวัน (lineup) จากไฟล์ CSV และบันทึก lineup
+//CsvMovieRepository <- อ่านหนัง ตารางฉาย และหนังที่ฉายแต่ละวัน (lineup) จากไฟล์ CSV และบันทึก lineup / หนังเรื่องใหม่
 //ตัวอย่างไฟล์ดูได้ที่ Booking_tickets/data/movies.csv, schedule.csv และ lineup.csv
 /*
     ทำไมต้องมี 3 ไฟล์:
@@ -285,6 +285,54 @@ public class CsvMovieRepository implements MovieRepository {
         Files.write(lineupFile, kept, StandardCharsets.UTF_8);
     }
 
+    /**
+     * ให้ admin เพิ่มหนังเรื่องใหม่ลง movies.csv (ต่อท้ายไฟล์ เรื่องเดิมไม่เปลี่ยน)
+     * ทำงาน: เช็กว่าเขียนลงไฟล์ได้ไม่พัง → อ่านหนังเดิมทั้งหมด (findAll) เช็กรหัสซ้ำ
+     *        → เก็บบรรทัดเดิมทุกบรรทัด (ทิ้งบรรทัดว่าง) → ต่อท้ายบรรทัดใหม่ → เขียนกลับทั้งไฟล์
+     * เช่น addMovie(Movie(M16, Dune: Part Two, 166, posters/m16.jpg))
+     *      → movies.csv มีบรรทัดสุดท้ายเพิ่ม "M16,Dune: Part Two,166,posters/m16.jpg"
+     *      addMovie(Movie(M1, ...))             → M1 มีแล้ว → IllegalArgumentException "Movie ID M1 already exists"
+     *      addMovie(Movie(M16, Dune, Part 2, ...)) → ชื่อมี , → IllegalArgumentException (ไฟล์จะแยกช่องผิด)
+     *
+     * ทำไมเขียนกลับทั้งไฟล์ ไม่ต่อท้ายเฉย ๆ:
+     *   movies.csv ตอนนี้บรรทัดสุดท้ายไม่มีขึ้นบรรทัดใหม่ ("...posters/m15.jpg" แล้วจบไฟล์เลย)
+     *   ถ้าต่อท้ายตรง ๆ จะได้ "...m15.jpgM16,Dune..." ติดกันบรรทัดเดียว ไฟล์พัง
+     *   Files.write(ไฟล์, ทุกบรรทัด) ใส่ขึ้นบรรทัดใหม่ให้ทุกบรรทัดเอง (แบบเดียวกับ saveLineup)
+     *
+     * @param movie หนังเรื่องใหม่ ห้าม null รหัสต้องยังไม่มีในไฟล์ ชื่อ/รูปโปสเตอร์ห้ามมี ,
+     * @throws IOException ถ้าไม่มีไฟล์ อ่าน/เขียนไม่ได้ หรือข้อมูลเดิมในไฟล์ผิด
+     * @throws IllegalArgumentException ถ้า movie เป็น null, รหัสซ้ำ หรือชื่อ/รูปโปสเตอร์มี ,
+     */
+    @Override
+    public void addMovie(Movie movie) throws IOException {
+        if (movie == null) {
+            throw new IllegalArgumentException("movie must not be null");
+        }
+        // 1. กันไฟล์พัง: ไฟล์ใช้ , คั่นช่อง ถ้าชื่อมี , บรรทัดจะกลายเป็น 5 ช่อง แล้วอ่านกลับไม่ได้ทั้งไฟล์
+        //    เช่น "M16,Dune, Part Two,166,posters/m16.jpg" → 5 ช่อง → findAll() error ทุกครั้ง
+        //    เช็กตรงนี้เพราะเป็นกฎของรูปแบบไฟล์ CSV (ที่เก็บแบบอื่นอาจใส่ , ได้)
+        if (movie.title().contains(",") || movie.posterPath().contains(",")) {
+            throw new IllegalArgumentException("Movie title and poster must not contain a comma (,)");
+        }
+        // 2. กันรหัสซ้ำ: findAll() อ่านหนังเดิมทั้งหมด (และเช็กว่าไฟล์เดิมไม่ผิด)
+        //    findMovie(หนังเดิม, "M16") → เจอ = ซ้ำ / null = ยังไม่มี เพิ่มได้
+        if (findMovie(findAll(), movie.id()) != null) {
+            throw new IllegalArgumentException("Movie ID " + movie.id() + " already exists");
+        }
+        // 3. บรรทัดใหม่เรียงช่องแบบเดียวกับที่ parseMovie อ่าน: รหัส,ชื่อ,ความยาว,รูปโปสเตอร์
+        String newLine = movie.id() + "," + movie.title() + "," + movie.durationMinutes() + "," + movie.posterPath();
+
+        // 4. บรรทัดเดิมเก็บไว้ทั้งหมด (ทิ้งแค่บรรทัดว่าง) แล้วต่อท้ายด้วยบรรทัดใหม่
+        List<String> kept = new ArrayList<>();
+        for (String line : readLines(moviesFile)) {
+            if (!line.isBlank()) {
+                kept.add(line);
+            }
+        }
+        kept.add(newLine);
+        Files.write(moviesFile, kept, StandardCharsets.UTF_8);   // เขียนกลับทั้งไฟล์ ทุกบรรทัดมีขึ้นบรรทัดใหม่
+    }
+
     // อ่านทุกบรรทัดในไฟล์ ใช้ร่วมกันทุกเมธอดเพื่อไม่ต้องเขียนโค้ดอ่านไฟล์ซ้ำ
     // ถ้าไม่มีไฟล์ โยน IOException บอก path เต็ม เพื่อให้รู้ว่าโปรแกรมไปหาไฟล์ที่ไหน
     private List<String> readLines(Path file) throws IOException {
@@ -411,7 +459,7 @@ public class CsvMovieRepository implements MovieRepository {
     // ไล่ทีละเรื่อง เจอคืนหนังเรื่องนั้นทันที วนหมดแล้วไม่เจอคืน null
     // movies = [M1, M2, M3]  findMovie(movies, "M2")  → คืนหนัง M2
     //                        findMovie(movies, "M99") → ไม่มี → คืน null
-    // ใช้ 2 ที่: findAll() เช็กรหัสซ้ำ / parseLineupMovies() แปลงรหัสใน lineup
+    // ใช้ 3 ที่: findAll() เช็กรหัสซ้ำ / parseLineupMovies() แปลงรหัสใน lineup / addMovie() เช็กรหัสซ้ำก่อนเพิ่ม
     private Movie findMovie(List<Movie> movies, String id) {
         for (Movie movie : movies) {
             if (movie.id().equals(id)) {
