@@ -41,14 +41,14 @@
     เปิดหน้านี้ยังไง:
         new LoginFrame(app).setVisible(true);   // app = AppServices ตัวเดิมของทั้งโปรแกรม (ห้าม create ใหม่)
         ใครเปิด: main ข้างล่าง (ตอนเปิดโปรแกรม), AdminFrame กด Logout (หลังแก้ AdminFrame บรรทัด 30)
-        MainFrame กด Logout ยังเปิด gui/LoginFrame ตัวเก่าอยู่ จนกว่าจะแยกไฟล์ MainFrame
+        MainFrame (gui/main) กด Logout
  */
 
 package gui.login;
 
 import exception.AuthField;           // ชื่อช่อง USERNAME / PASSWORD ใช้ถาม AuthFormException ว่าช่องไหนผิดอะไร
 import exception.AuthFormException;   // error ของฟอร์ม (ชื่อสั้น / รหัสผิด / ชื่อซ้ำ ...) ที่ AuthService โยนมา
-import gui.MainFrame;                 // หน้าลูกค้า (เลือกหนัง) เปิดหลังลูกค้า login ผ่าน
+import gui.main.MainFrame;            // หน้าลูกค้าตัวใหม่ (โฟลเดอร์ gui/main) เปิดหลังลูกค้า login ผ่าน
 import gui.admin.AdminFrame;          // หน้า admin (เลือกหนัง 5 เรื่องของพรุ่งนี้) เปิดหลัง admin login ผ่าน
 import java.awt.*;                    // GridBagLayout = วางของไว้กลางพื้นที่, Dimension = ขนาดที่ว่าง
 import java.io.IOException;           // อ่าน/เขียนไฟล์ users.csv ไม่ได้ (AuthService โยนมา)
@@ -278,7 +278,7 @@ public final class LoginFrame extends JFrame {   // public เพราะ Admin
         // user.isAdmin() = บทบาทเป็น ADMIN ไหม (User.java บรรทัด 70) เช่น admin → true, tester9 → false
         // x ? a : b = ถ้า x จริงได้ a ถ้าไม่จริงได้ b (ทั้ง 2 หน้าเป็น JFrame เลยเก็บในตัวแปรเดียวกันได้)
         // ส่ง app ตัวเดิมไป นาฬิกาและไฟล์ทั้งโปรแกรมจะได้เป็นชุดเดียวกัน
-        //   new AdminFrame(คน, app) (AdminFrame.java บรรทัด 48) / new MainFrame(คน, app) (MainFrame.java บรรทัด 87)
+        //   new AdminFrame(คน, app) (AdminFrame.java บรรทัด 48) / new MainFrame(คน, app) (gui/main/MainFrame.java บรรทัด 75)
         JFrame next = user.isAdmin() ? new AdminFrame(user, app) : new MainFrame(user, app);
         next.setVisible(true);   // โชว์หน้าใหม่ก่อน
         dispose();               // แล้วค่อยปิดหน้า login (dispose = ปิดหน้าต่างนี้ ไม่ได้ปิดโปรแกรม)
