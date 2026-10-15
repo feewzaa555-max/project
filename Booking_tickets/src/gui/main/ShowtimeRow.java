@@ -125,8 +125,12 @@ final class ShowtimeRow extends JPanel {
         return picked;
     }
 
-    // สร้างปุ่มของรอบเดียว
-    //   showtime = รอบของปุ่มนี้ เช่น 11:45 Hall 2
+    /**
+     * สร้างปุ่มของรอบเดียว
+     *
+     * @param showtime รอบของปุ่มนี้ เช่น 11:45 Hall 2
+     * @return JButton ปุ่มรอบ 1 ปุ่ม (เริ่มแล้ว = เทา กดไม่ได้ / ยังไม่เริ่ม = กดแล้ว pick(รอบนี้))
+     */
     private JButton makeButton(Showtime showtime) {
         // hasStarted(now) = รอบนี้เริ่มไปแล้วหรือยัง (Showtime.java) เช่น now 10:00 → รอบ 08:45 true, 11:45 false
         boolean ended = showtime.hasStarted(now);
@@ -162,15 +166,20 @@ final class ShowtimeRow extends JPanel {
         return button;
     }
 
-    // ลูกค้ากดรอบ → จำรอบ แล้วบอก MainFrame
-    //   showtime = รอบของปุ่มที่ถูกกด
+    /**
+     * ลูกค้ากดรอบ → จำรอบ แล้วบอก MainFrame
+     *
+     * @param showtime รอบของปุ่มที่ถูกกด
+     */
     private void pick(Showtime showtime) {
         picked = showtime;   // จำรอบที่กด
         checkRep();          // ตรวจ RI (SC4 หน้า 12 เรียกท้ายทุกเมธอดที่แก้ rep)
         onPick.run();        // ทำคำสั่งที่ MainFrame ส่งมา เช่น openSeats() เปิดหน้าเลือกที่นั่งของรอบนี้
     }
 
-    // ตรวจ Rep Invariant ทุกข้อ ทำงานเฉพาะตอนรันด้วย java -ea (SC4 หน้า 12)
+    /**
+     * ตรวจ Rep Invariant ทุกข้อ ทำงานเฉพาะตอนรันด้วย java -ea (SC4 หน้า 12)
+     */
     private void checkRep() {
         assert showtimes != null && now != null && onPick != null : "field ต้องไม่เป็น null";
         assert picked == null || (showtimes.contains(picked) && !picked.hasStarted(now))

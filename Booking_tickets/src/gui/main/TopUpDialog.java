@@ -133,7 +133,9 @@ final class TopUpDialog extends JDialog {
         setLocationRelativeTo(owner);    // เปิดกลางหน้าต่างเจ้าของ
     }
 
-    // ④ กด Confirm / Enter
+    /**
+     * ④ กด Confirm / Enter
+     */
     private void confirm() {
         String text = amountField.getText().trim();   // trim() = ตัดช่องว่างหน้า/หลัง
         int amount;
@@ -164,13 +166,25 @@ final class TopUpDialog extends JDialog {
         }
     }
 
-    // ข้อความช่วงเงิน เช่น "1 - 5,000 THB" อ่านจากกฎของ Account
-    //   String.format(Locale.US, "%,d", 5000) = "5,000" (%,d = ตัวเลขมีลูกน้ำ)
+    /**
+     * ข้อความช่วงเงิน เช่น "1 - 5,000 THB" อ่านจากกฎของ Account
+     *   String.format(Locale.US, "%,d", 5000) = "5,000" (%,d = ตัวเลขมีลูกน้ำ)
+     *   ไม่รับพารามิเตอร์ อ่าน Account.MIN_TOP_UP / MAX_TOP_UP
+     *
+     * @return String ข้อความช่วงเงิน เช่น "1 - 5,000 THB"
+     */
     private static String rangeText() {
         return String.format(Locale.US, "%,d - %,d THB", Account.MIN_TOP_UP, Account.MAX_TOP_UP);
     }
 
-    // ป้ายข้อความ 1 บรรทัด จัดกลาง
+    /**
+     * ป้ายข้อความ 1 บรรทัด จัดกลาง
+     *
+     * @param text ข้อความ เช่น "Wallet Top-up"
+     * @param font ฟอนต์
+     * @param color สีตัวหนังสือ
+     * @return JLabel ป้าย 1 บรรทัดที่อยู่กลางกล่อง
+     */
     private static JLabel line(String text, Font font, Color color) {
         JLabel label = new JLabel(text);
         label.setFont(font);
@@ -179,9 +193,18 @@ final class TopUpDialog extends JDialog {
         return label;
     }
 
-    // ปุ่มของกล่อง
-    //   font / background / foreground / border = ฟอนต์ / พื้น / ตัวหนังสือ / กรอบ
-    //   padV, padH = ที่ว่างระหว่างกรอบกับคำ บน-ล่าง และ ซ้าย-ขวา (ปุ่มลัดเล็ก 4, 8 / ปุ่มหลัก 7, 16)
+    /**
+     * ปุ่มของกล่อง (ปุ่มลัด +100 ... และปุ่ม Confirm Top-up ใช้ตัวนี้ทั้งคู่)
+     *
+     * @param text       คำบนปุ่ม เช่น "+500" หรือ "Confirm Top-up"
+     * @param font       ฟอนต์ เช่น MainTheme.FONT_LABEL
+     * @param background สีพื้น เช่น MainTheme.SUCCESS (เขียว)
+     * @param foreground สีตัวหนังสือ เช่น MainTheme.BUTTON_TEXT (ดำ)
+     * @param border     สีกรอบ
+     * @param padV       ที่ว่างระหว่างกรอบกับคำ ด้านบน-ล่าง px (ปุ่มลัด 4 / ปุ่มหลัก 7)
+     * @param padH       ที่ว่างระหว่างกรอบกับคำ ด้านซ้าย-ขวา px (ปุ่มลัด 8 / ปุ่มหลัก 16)
+     * @return JButton ปุ่มที่ทาสีและเว้นขอบแล้ว (ยังไม่ได้ผูกว่ากดแล้วทำอะไร คนเรียกผูกเอง)
+     */
     private static JButton button(String text, Font font, Color background, Color foreground, Color border, int padV, int padH) {
         JButton button = new JButton(text);
         button.setFont(font);

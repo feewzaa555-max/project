@@ -154,8 +154,12 @@ final class ClockPanel extends JPanel {
         showNow();
     }
 
-    // ป้ายหน้าช่องพิมพ์ "Date" / "Time" ตัวหนา 12 สีเกือบดำ
-    //   text = คำบนป้าย
+    /**
+     * ป้ายหน้าช่องพิมพ์ "Date" / "Time" ตัวหนา 12 สีเกือบดำ
+     *
+     * @param text คำบนป้าย
+     * @return JLabel ป้ายตัวหนา 12 สีเกือบดำ เช่น "Date"
+     */
     private JLabel label(String text) {
         JLabel label = new JLabel(text);
         label.setFont(AdminTheme.FONT_LABEL);
@@ -163,16 +167,20 @@ final class ClockPanel extends JPanel {
         return label;
     }
 
-    // ใส่เวลาตอนนี้ของโปรแกรมลงช่องพิมพ์ เช่น [14/10/2026] [10:00]
-    //   clock.now() = วันเวลาตอนนี้ของโปรแกรม (AppClock.java บรรทัด 96)
-    //   .format(แม่แบบ) = แปลงเป็นข้อความตามแม่แบบ เช่น 2026-10-14T10:00 → "14/10/2026" และ "10:00"
+    /**
+     * ใส่เวลาตอนนี้ของโปรแกรมลงช่องพิมพ์ เช่น [14/10/2026] [10:00]
+     *   clock.now() = วันเวลาตอนนี้ของโปรแกรม (AppClock.java บรรทัด 96)
+     *   .format(แม่แบบ) = แปลงเป็นข้อความตามแม่แบบ เช่น 2026-10-14T10:00 → "14/10/2026" และ "10:00"
+     */
     private void fillFields() {
         LocalDateTime now = clock.now();
         dateField.setText(now.format(DATE_FORMAT));
         timeField.setText(now.format(TIME_FORMAT));
     }
 
-    // เขียนบรรทัด ③ ใหม่ เช่น "Now: 20/10/2026 09:00"
+    /**
+     * เขียนบรรทัด ③ ใหม่ เช่น "Now: 20/10/2026 09:00"
+     */
     private void showNow() {
         nowLabel.setText("Now: " + clock.now().format(INPUT_FORMAT));
     }
@@ -202,7 +210,9 @@ final class ClockPanel extends JPanel {
         onChange.run();      // ทำคำสั่งที่ AdminFrame ส่งมา เช่น showLineup() → Showing on เป็นวันนี้ + 1
     }
 
-    // กด Reset: กลับเวลาจริงของเครื่อง → ใส่เวลาจริงลงช่อง → เขียนบรรทัด Now ใหม่ → บอก AdminFrame
+    /**
+     * กด Reset: กลับเวลาจริงของเครื่อง → ใส่เวลาจริงลงช่อง → เขียนบรรทัด Now ใหม่ → บอก AdminFrame
+     */
     private void handleReset() {
         clock.reset();       // ล้างเวลาที่ตั้งไว้ (AppClock.java บรรทัด 129)
         fillFields();

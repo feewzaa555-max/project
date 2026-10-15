@@ -121,8 +121,13 @@ public final class SeatFrame extends JFrame {
         refresh();   // ข้อมูลครั้งแรก: ยอดเงิน + การ์ดสรุป (ยังไม่เลือกที่นั่ง)
     }
 
-    // ③ หัวรอบ: ปุ่ม Back ซ้าย / ชื่อหนัง + โรง วัน เวลา ความยาว
-    //   เช่น "Hall 3  ·  Date: 14/10/2026  ·  Time: 11:45 - 14:10  (145 min)"
+    /**
+     * ③ หัวรอบ: ปุ่ม Back ซ้าย / ชื่อหนัง + โรง วัน เวลา ความยาว
+     *   เช่น "Hall 3  ·  Date: 14/10/2026  ·  Time: 11:45 - 14:10  (145 min)"
+     *   ไม่รับพารามิเตอร์ ใช้ showtime ของหน้านี้
+     *
+     * @return JPanel แถบหัวรอบ = ปุ่ม ← Back + ชื่อหนัง + "Hall 3 · Date: 14/10/2026 · Time: 11:45 - 14:10 (145 min)"
+     */
     private JPanel makeBanner() {
         JButton back = new JButton("← Back");
         back.setFont(MainTheme.FONT_LABEL);
@@ -181,7 +186,9 @@ public final class SeatFrame extends JFrame {
         }
     }
 
-    // ⑤ กดปุ่มจอง: ถามยืนยัน → จองจริง → โชว์ตั๋ว (ปุ่มจองกดได้เฉพาะตอนเลือกแล้วและเงินพอ)
+    /**
+     * ⑤ กดปุ่มจอง: ถามยืนยัน → จองจริง → โชว์ตั๋ว (ปุ่มจองกดได้เฉพาะตอนเลือกแล้วและเงินพอ)
+     */
     private void handleBooking() {
         List<Seat> seats = seatMap.selected();
         List<String> codes = new ArrayList<>();
@@ -212,13 +219,17 @@ public final class SeatFrame extends JFrame {
         }
     }
 
-    // กลับหน้าเลือกหนัง (กด Back / ปิดตั๋ว)
+    /**
+     * กลับหน้าเลือกหนัง (กด Back / ปิดตั๋ว)
+     */
     private void backToMain() {
         new MainFrame(user, app).setVisible(true);
         dispose();
     }
 
-    // ⑤ กล่องสมัครสมาชิก: เสร็จ → refresh (ราคาลดทันที) / เงินไม่พอแล้วกด Yes → openTopUp
+    /**
+     * ⑤ กล่องสมัครสมาชิก: เสร็จ → refresh (ราคาลดทันที) / เงินไม่พอแล้วกด Yes → openTopUp
+     */
     private void openMembership() {
         try {
             new MembershipDialog(this, app.accounts(), user, this::refresh, this::openTopUp).setVisible(true);
@@ -227,7 +238,9 @@ public final class SeatFrame extends JFrame {
         }
     }
 
-    // ⑤ กล่องเติมเงิน: เสร็จ → refresh (ปุ่มจองอาจกดได้แล้ว)
+    /**
+     * ⑤ กล่องเติมเงิน: เสร็จ → refresh (ปุ่มจองอาจกดได้แล้ว)
+     */
     private void openTopUp() {
         try {
             new TopUpDialog(this, app.accounts(), user, this::refresh).setVisible(true);
@@ -236,7 +249,9 @@ public final class SeatFrame extends JFrame {
         }
     }
 
-    // ⑤ กล่องประวัติการจอง (ดูอย่างเดียว)
+    /**
+     * ⑤ กล่องประวัติการจอง (ดูอย่างเดียว)
+     */
     private void openHistory() {
         try {
             new HistoryDialog(this, app.bookings(), user).setVisible(true);
@@ -245,7 +260,9 @@ public final class SeatFrame extends JFrame {
         }
     }
 
-    // ⑤ Logout: ถามยืนยัน → ปิดหน้านี้ → หน้า Login ด้วย app ตัวเดิม
+    /**
+     * ⑤ Logout: ถามยืนยัน → ปิดหน้านี้ → หน้า Login ด้วย app ตัวเดิม
+     */
     private void handleLogout() {
         int confirm = JOptionPane.showConfirmDialog(this,
                 "Are you sure you want to log out?", "Confirm Logout",
@@ -256,7 +273,12 @@ public final class SeatFrame extends JFrame {
         }
     }
 
-    // กล่อง error (ไอคอน X สีแดง)
+    /**
+     * กล่อง error (ไอคอน X สีแดง)
+     *   ผลที่ได้: เด้งกล่อง error อย่างเดียว
+     *
+     * @param message ข้อความ error เช่น "Cannot retrieve account data: ..."
+     */
     private void showError(String message) {
         JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE);
     }

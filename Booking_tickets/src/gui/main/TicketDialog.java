@@ -80,8 +80,13 @@ final class TicketDialog extends JDialog {
         setResizable(false);
         setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
         addWindowListener(new WindowAdapter() {
+            /**
+             * ทำงานตอนกด ✕ มุมกล่อง → finish() เหมือนกด Done
+             *
+             * @param e ข้อมูลเหตุการณ์ปิดหน้าต่าง (Swing ส่งมาให้เอง ไม่ได้ใช้)
+             */
             @Override
-            public void windowClosing(WindowEvent e) {   // ทำงานตอนกด ✕ มุมกล่อง
+            public void windowClosing(WindowEvent e) {
                 finish();
             }
         });
@@ -135,14 +140,22 @@ final class TicketDialog extends JDialog {
         setLocationRelativeTo(owner);    // เด้งกลางหน้าต่างแม่
     }
 
-    // ปิดตั๋ว แล้วทำคำสั่งที่ SeatFrame ส่งมา (กด Done และกด ✕ มาที่นี่ทั้งคู่)
+    /**
+     * ปิดตั๋ว แล้วทำคำสั่งที่ SeatFrame ส่งมา (กด Done และกด ✕ มาที่นี่ทั้งคู่)
+     */
     private void finish() {
         dispose();
         onDone.run();
     }
 
-    // แถว "หัวข้อ ... ค่า" เช่น Movie: ... Spider-Man
-    //   ค่าใช้ <table width=220> ยาวเกินขึ้นบรรทัดใหม่ และชิดขวา (align=right)
+    /**
+     * แถว "หัวข้อ ... ค่า" เช่น Movie: ... Spider-Man
+     *   ค่าใช้ <table width=220> ยาวเกินขึ้นบรรทัดใหม่ และชิดขวา (align=right)
+     *
+     * @param title หัวข้อซ้าย เช่น "Movie:"
+     * @param value ค่าขวา เช่น "Spider-Man: Brand New Day"
+     * @return JPanel แถว 1 แถว หัวข้อชิดซ้าย ค่าชิดขวา (ค่ายาวขึ้นบรรทัดใหม่)
+     */
     private static JPanel row(String title, String value) {
         JLabel left = new JLabel(title);
         left.setFont(MainTheme.FONT_SMALL);
@@ -163,7 +176,14 @@ final class TicketDialog extends JDialog {
         return row;
     }
 
-    // ข้อความอยู่กลาง
+    /**
+     * ข้อความอยู่กลาง
+     *
+     * @param text ข้อความ เช่น "KU CINEMA - E-TICKET"
+     * @param font ฟอนต์
+     * @param color สีตัวหนังสือ
+     * @return JLabel ป้ายที่อยู่กลางตั๋ว
+     */
     private static JLabel centered(String text, Font font, Color color) {
         JLabel label = new JLabel(text);
         label.setFont(font);
@@ -172,7 +192,11 @@ final class TicketDialog extends JDialog {
         return label;
     }
 
-    // เส้นคั่นบาง ๆ กว้างเต็มกล่อง
+    /**
+     * เส้นคั่นบาง ๆ กว้างเต็มกล่อง
+     *
+     * @return JSeparator เส้นคั่นบาง 1 px กว้างเต็มตั๋ว
+     */
     private static JSeparator divider() {
         JSeparator line = new JSeparator();
         line.setForeground(MainTheme.CARD_BORDER);
@@ -181,7 +205,12 @@ final class TicketDialog extends JDialog {
         return line;
     }
 
-    // ก้อนว่างแนวตั้ง สูง height px
+    /**
+     * ก้อนว่างแนวตั้ง สูง height px
+     *
+     * @param height ความสูงช่องว่างเป็น px เช่น 12
+     * @return Component ก้อนว่างกว้าง 0 สูง height
+     */
     private static Component gap(int height) {
         return Box.createRigidArea(new Dimension(0, height));
     }

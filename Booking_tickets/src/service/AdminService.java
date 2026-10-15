@@ -298,17 +298,27 @@ public class AdminService {
         return movie;
     }
 
-    // นามสกุลไฟล์ตัวเล็ก เพื่อเช็กชนิดรูปและตั้งชื่อไฟล์ใหม่
-    // "dune.JPG" → "jpg" / "poster.final.png" → "png" (เอาหลังจุดตัวสุดท้าย) / "dune" (ไม่มีจุด) → ""
+    /**
+     * นามสกุลไฟล์ตัวเล็ก เพื่อเช็กชนิดรูปและตั้งชื่อไฟล์ใหม่
+     * "dune.JPG" → "jpg" / "poster.final.png" → "png" (เอาหลังจุดตัวสุดท้าย) / "dune" (ไม่มีจุด) → ""
+     *
+     * @param file ไฟล์รูปที่ admin เลือก เช่น C:/Users/me/Pictures/Dune.JPG
+     * @return String นามสกุลตัวเล็กไม่มีจุด เช่น "jpg" / ไม่มีนามสกุล → ""
+     */
     private static String posterType(Path file) {
         String name = file.getFileName().toString();
         int dot = name.lastIndexOf('.');     // ตำแหน่งจุดตัวสุดท้าย ไม่มีจุด → -1
         return (dot < 0) ? "" : name.substring(dot + 1).toLowerCase(Locale.ROOT);
     }
 
-    // เลขในรหัสหนัง เพื่อหาเลขมากสุดแล้วออกรหัสใหม่
-    // "M15" → 15 / "M2" → 2 / รหัสที่ไม่ใช่ M ตามด้วยเลข เช่น "X1", "M1a" → 0 (ไม่นับ)
-    // ใช้เลข ไม่ใช้เทียบข้อความ เพราะเทียบข้อความ "M9" จะมากกว่า "M15"
+    /**
+     * เลขในรหัสหนัง เพื่อหาเลขมากสุดแล้วออกรหัสใหม่
+     * "M15" → 15 / "M2" → 2 / รหัสที่ไม่ใช่ M ตามด้วยเลข เช่น "X1", "M1a" → 0 (ไม่นับ)
+     * ใช้เลข ไม่ใช้เทียบข้อความ เพราะเทียบข้อความ "M9" จะมากกว่า "M15"
+     *
+     * @param id รหัสหนัง เช่น "M15"
+     * @return int เลขในรหัส เช่น 15 / ไม่ใช่ M ตามด้วยเลข → 0
+     */
     private static int idNumber(String id) {
         if (!id.startsWith(MOVIE_ID_PREFIX)) {
             return 0;
@@ -335,7 +345,9 @@ public class AdminService {
         return ids;
     }
 
-    // ตรวจ RI
+    /**
+     * ตรวจ RI
+     */
     private void checkRep() {
         assert movieRepository != null;
         assert clock != null;

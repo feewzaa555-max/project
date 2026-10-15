@@ -112,7 +112,9 @@ final class DateBar extends JPanel {
         return selected;
     }
 
-    // วาดปุ่มใหม่ทั้งแถว ใช้ตอนเริ่มและทุกครั้งที่เปลี่ยนวัน เพื่อให้สีปุ่มตรงกับวันที่เลือก
+    /**
+     * วาดปุ่มใหม่ทั้งแถว ใช้ตอนเริ่มและทุกครั้งที่เปลี่ยนวัน เพื่อให้สีปุ่มตรงกับวันที่เลือก
+     */
     private void drawButtons() {
         removeAll();                     // ลบปุ่มเก่าทิ้งก่อน ไม่งั้นปุ่มซ้อนเพิ่มทุกครั้งที่กด
         for (LocalDate date : dates) {   // 1 วัน = 1 ปุ่ม ตามลำดับในลิสต์
@@ -122,8 +124,12 @@ final class DateBar extends JPanel {
         repaint();                       // วาดใหม่บนจอ
     }
 
-    // สร้างปุ่มของวันเดียว
-    //   date = วันของปุ่มนี้ เช่น 2026-10-14
+    /**
+     * สร้างปุ่มของวันเดียว
+     *
+     * @param date วันของปุ่มนี้ เช่น 2026-10-14 (มาจากรายการ dates ที่ส่งเข้า DateBar)
+     * @return JButton ปุ่มวันที่ 1 ปุ่ม เช่น [Today 14/10] กดแล้ว pick(วันนั้น)
+     */
     private JButton makeButton(LocalDate date) {
         boolean isSelected = date.equals(selected);   // ปุ่มนี้คือวันที่เลือกอยู่ไหม
 
@@ -165,8 +171,11 @@ final class DateBar extends JPanel {
         return button;
     }
 
-    // เปลี่ยนวันที่เลือก แล้วบอก MainFrame
-    //   date = วันของปุ่มที่ถูกกด
+    /**
+     * เปลี่ยนวันที่เลือก แล้วบอก MainFrame
+     *
+     * @param date วันของปุ่มที่ถูกกด
+     */
     private void pick(LocalDate date) {
         selected = date;     // จำวันใหม่
         drawButtons();       // วาดปุ่มใหม่ ปุ่มที่กดกลายเป็นสีฟ้า ปุ่มเก่ากลับเป็นสีขาว
@@ -174,7 +183,9 @@ final class DateBar extends JPanel {
         onChange.run();      // ทำคำสั่งที่ MainFrame ส่งมา เช่น refreshShowtimes() โหลดรอบฉายของวันใหม่
     }
 
-    // ตรวจ Rep Invariant ทุกข้อ ทำงานเฉพาะตอนรันด้วย java -ea (SC4 หน้า 12)
+    /**
+     * ตรวจ Rep Invariant ทุกข้อ ทำงานเฉพาะตอนรันด้วย java -ea (SC4 หน้า 12)
+     */
     private void checkRep() {
         assert dates != null && !dates.isEmpty() : "dates ต้องไม่ว่าง";
         assert today != null && onChange != null : "today และ onChange ต้องไม่เป็น null";

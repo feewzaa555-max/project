@@ -333,8 +333,14 @@ public class CsvMovieRepository implements MovieRepository {
         Files.write(moviesFile, kept, StandardCharsets.UTF_8);   // เขียนกลับทั้งไฟล์ ทุกบรรทัดมีขึ้นบรรทัดใหม่
     }
 
-    // อ่านทุกบรรทัดในไฟล์ ใช้ร่วมกันทุกเมธอดเพื่อไม่ต้องเขียนโค้ดอ่านไฟล์ซ้ำ
-    // ถ้าไม่มีไฟล์ โยน IOException บอก path เต็ม เพื่อให้รู้ว่าโปรแกรมไปหาไฟล์ที่ไหน
+    /**
+     * อ่านทุกบรรทัดในไฟล์ ใช้ร่วมกันทุกเมธอดเพื่อไม่ต้องเขียนโค้ดอ่านไฟล์ซ้ำ
+     * ถ้าไม่มีไฟล์ โยน IOException บอก path เต็ม เพื่อให้รู้ว่าโปรแกรมไปหาไฟล์ที่ไหน
+     *
+     * @param file ไฟล์ที่จะอ่าน เช่น data/movies.csv
+     * @return List<String> ทุกบรรทัดในไฟล์ (รวมบรรทัดว่าง) เช่น ["M1,Spider-Man: Brand New Day,145,posters/m1.jpg", ...]
+     * @throws IOException ถ้าไม่มีไฟล์ หรืออ่านไฟล์ไม่ได้
+     */
     private List<String> readLines(Path file) throws IOException {
         if (!Files.exists(file)) {
             // toAbsolutePath() แปลง path สั้นเป็น path เต็มตั้งแต่ไดรฟ์
@@ -345,8 +351,15 @@ public class CsvMovieRepository implements MovieRepository {
         return Files.readAllLines(file, StandardCharsets.UTF_8);
     }
 
-    // แปลง 1 บรรทัดของ movies.csv เป็น Movie เพื่อให้ส่วนอื่นใช้หนังเป็น object ได้ ไม่ต้องตัดข้อความเอง
-    // เช่น "M2,Pacific Rim,131,posters/m2.jpg" → Movie(M2, Pacific Rim, 131, posters/m2.jpg)
+    /**
+     * แปลง 1 บรรทัดของ movies.csv เป็น Movie เพื่อให้ส่วนอื่นใช้หนังเป็น object ได้ ไม่ต้องตัดข้อความเอง
+     * เช่น "M2,Pacific Rim,131,posters/m2.jpg" → Movie(M2, Pacific Rim, 131, posters/m2.jpg)
+     *
+     * @param line 1 บรรทัดของ movies.csv เช่น "M2,Pacific Rim,131,posters/m2.jpg"
+     * @param lineNumber เลขบรรทัด ใช้บอกใน error
+     * @return Movie หนังของบรรทัดนั้น เช่น Movie(M2, Pacific Rim, 131, posters/m2.jpg)
+     * @throws IOException ถ้าบรรทัดผิดรูปแบบ (ข้อความบอกชื่อไฟล์และเลขบรรทัด)
+     */
     private Movie parseMovie(String line, int lineNumber) throws IOException {
         // 1. ตัดตรง , → ["M2", "Pacific Rim", "131", "posters/m2.jpg"]
         String[] parts = line.split(",");
@@ -379,9 +392,17 @@ public class CsvMovieRepository implements MovieRepository {
         }
     }
 
-    // แปลงรายการรหัสหนังใน lineup.csv เป็นหนังจริง เพื่อให้ findShowtimesOn หยิบหนังตามลำดับไปสร้างรอบได้
-    // เช่น "M6;M9;M10" → [Hello World, Inception, Interstellar]
-    //      "M6;M99"    → ไม่มีหนังรหัส M99 → error (กัน admin ตั้งหนังที่ไม่มีอยู่จริง)
+    /**
+     * แปลงรายการรหัสหนังใน lineup.csv เป็นหนังจริง เพื่อให้ findShowtimesOn หยิบหนังตามลำดับไปสร้างรอบได้
+     * เช่น "M6;M9;M10" → [Hello World, Inception, Interstellar]
+     *      "M6;M99"    → ไม่มีหนังรหัส M99 → error (กัน admin ตั้งหนังที่ไม่มีอยู่จริง)
+     *
+     * @param text ช่องรหัสหนังใน lineup.csv เช่น "M6;M9;M10"
+     * @param lineNumber เลขบรรทัด ใช้บอกใน error
+     * @param movies หนังทั้งหมด (ไว้แปลงรหัสเป็นหนัง)
+     * @return List<Movie> หนังเรียงตามลำดับ เช่น [Hello World, Inception, Interstellar]
+     * @throws IOException ถ้ามีรหัสหนังที่ไม่มีใน movies.csv
+     */
     private List<Movie> parseLineupMovies(String text, int lineNumber, List<Movie> movies) throws IOException {
         List<Movie> lineup = new ArrayList<>();
         // text.split(";") : ตัดตรง ; เช่น "M6;M9;M10" → ["M6", "M9", "M10"]
@@ -455,11 +476,16 @@ public class CsvMovieRepository implements MovieRepository {
         }
     }
 
-    // หาหนังจากรหัส เพื่อแปลงรหัสในไฟล์ (เช่น "M2") เป็นหนังจริง
-    // ไล่ทีละเรื่อง เจอคืนหนังเรื่องนั้นทันที วนหมดแล้วไม่เจอคืน null
-    // movies = [M1, M2, M3]  findMovie(movies, "M2")  → คืนหนัง M2
-    //                        findMovie(movies, "M99") → ไม่มี → คืน null
-    // ใช้ 3 ที่: findAll() เช็กรหัสซ้ำ / parseLineupMovies() แปลงรหัสใน lineup / addMovie() เช็กรหัสซ้ำก่อนเพิ่ม
+    /**
+     * หาหนังจากรหัส เพื่อแปลงรหัสในไฟล์ (เช่น "M2") เป็นหนังจริง
+     * ไล่ทีละเรื่อง เจอคืนหนังเรื่องนั้นทันที วนหมดแล้วไม่เจอคืน null
+     *                        findMovie(movies, "M99") → ไม่มี → คืน null
+     * ใช้ 3 ที่: findAll() เช็กรหัสซ้ำ / parseLineupMovies() แปลงรหัสใน lineup / addMovie() เช็กรหัสซ้ำก่อนเพิ่ม
+     *
+     * @param movies รายการหนังที่จะค้น
+     * @param id รหัสที่หา เช่น "M2"
+     * @return Movie หนังที่รหัสตรง / ไม่เจอ → null
+     */
     private Movie findMovie(List<Movie> movies, String id) {
         for (Movie movie : movies) {
             if (movie.id().equals(id)) {
@@ -469,15 +495,24 @@ public class CsvMovieRepository implements MovieRepository {
         return null;
     }
 
-    // สร้าง error ที่บอกชื่อไฟล์และเลขบรรทัด เพื่อให้คนเปิดไฟล์ไปแก้ถูกบรรทัดทันที
-    // error(moviesFile, 3, "Movie duration must be a number, but found 13O")
-    //   → "movies.csv line 3: Movie duration must be a number, but found 13O"
-    // หน้า GUI catch IOException แล้วเอา getMessage() ไปโชว์ในกล่องแจ้งเตือน
+    /**
+     * สร้าง error ที่บอกชื่อไฟล์และเลขบรรทัด เพื่อให้คนเปิดไฟล์ไปแก้ถูกบรรทัดทันที
+     * error(moviesFile, 3, "Movie duration must be a number, but found 13O")
+     *   → "movies.csv line 3: Movie duration must be a number, but found 13O"
+     * หน้า GUI catch IOException แล้วเอา getMessage() ไปโชว์ในกล่องแจ้งเตือน
+     *
+     * @param file ไฟล์ที่ผิด เช่น data/movies.csv
+     * @param lineNumber บรรทัดที่ผิด เช่น 3
+     * @param reason ผิดเพราะอะไร
+     * @return IOException ข้อความ "movies.csv line 3: <reason>" (คืนไปให้คนเรียก throw)
+     */
     private IOException error(Path file, int lineNumber, String reason) {
         return new IOException(file.getFileName() + " line " + lineNumber + ": " + reason);
     }
 
-    // ตรวจ RI
+    /**
+     * ตรวจ RI
+     */
     private void checkRep() {
         assert moviesFile != null;
         assert scheduleFile != null;

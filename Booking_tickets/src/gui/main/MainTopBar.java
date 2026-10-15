@@ -154,8 +154,12 @@ final class MainTopBar extends JPanel {
         showMembership(false, null);
     }
 
-    // ปุ่ม Membership 2 แบบ
-    //   member = เป็นสมาชิกอยู่ไหม / until = วันเวลาหมดสมาชิก (ใช้ตอน member เป็น true เท่านั้น)
+    /**
+     * ปุ่ม Membership 2 แบบ
+     *
+     * @param member เป็นสมาชิกอยู่ไหม
+     * @param until วันเวลาหมดสมาชิก (ใช้ตอน member เป็น true เท่านั้น)
+     */
     private void showMembership(boolean member, LocalDateTime until) {
         if (member) {
             // เป็นสมาชิก: "Member (until 13/11)" พื้นเหลืองอ่อน ตัวหนังสือส้มเข้ม กรอบส้ม
@@ -168,8 +172,13 @@ final class MainTopBar extends JPanel {
         }
     }
 
-    // สร้างปุ่มพื้นฐานของแถบ: ฟอนต์, เมาส์รูปมือ, กดแล้วทำ action
-    //   text = คำบนปุ่ม / action = สิ่งที่ MainFrame ฝากไว้
+    /**
+     * สร้างปุ่มพื้นฐานของแถบ: ฟอนต์, เมาส์รูปมือ, กดแล้วทำ action
+     *
+     * @param text คำบนปุ่ม เช่น "Top-up"
+     * @param action สิ่งที่ทำตอนกด เช่น this::openTopUp ของ MainFrame
+     * @return JButton ปุ่มที่ตั้งฟอนต์ เมาส์รูปมือ และผูก action แล้ว (ยังไม่ได้ทาสี ทาด้วย style)
+     */
     private static JButton button(String text, Runnable action) {
         JButton button = new JButton(text);
         button.setFont(MainTheme.FONT_LABEL);                 // Tahoma หนา 12
@@ -179,9 +188,18 @@ final class MainTopBar extends JPanel {
         return button;
     }
 
-    // ทาสีปุ่ม: พื้น / ตัวหนังสือ / กรอบ
-    //   ขอบ: LineBorder(สี, 1, true) = เส้นรอบมุมโค้ง + EmptyBorder(5, 12, 5, 12) = ที่ว่างระหว่างเส้นกับคำ
-    //   ใช้กับ 4 ปุ่ม เขียนที่เดียว (SC2 หน้า 8 DRY) เดิมเขียนซ้ำทุกปุ่ม
+    /**
+     * ทาสีปุ่ม: พื้น / ตัวหนังสือ / กรอบ
+     *   ขอบ: LineBorder(สี, 1, true) = เส้นรอบมุมโค้ง + EmptyBorder(5, 12, 5, 12) = ที่ว่างระหว่างเส้นกับคำ
+     *   ใช้กับ 4 ปุ่ม เขียนที่เดียว (SC2 หน้า 8 DRY) เดิมเขียนซ้ำทุกปุ่ม
+     *        เช่น style(ปุ่ม Logout, LOGOUT_BACKGROUND, ERROR, LOGOUT_BORDER) → ปุ่มแดงอ่อน
+     *   ผลที่ได้: เปลี่ยนสีปุ่มที่ส่งมาตรง ๆ
+     *
+     * @param button ปุ่มที่จะทาสี
+     * @param background สีพื้น
+     * @param text สีตัวหนังสือ
+     * @param border สีกรอบ
+     */
     private static void style(JButton button, Color background, Color text, Color border) {
         button.setBackground(background);
         button.setForeground(text);

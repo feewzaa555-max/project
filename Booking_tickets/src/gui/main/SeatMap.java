@@ -138,7 +138,11 @@ final class SeatMap extends JPanel {
         return result;
     }
 
-    // ① ป้าย SCREEN: พื้นฟ้าอ่อน กรอบฟ้า ตัวหนังสือฟ้าอยู่กลาง เว้นซ้ายขวา 30 px (เท่าของเดิม)
+    /**
+     * ① ป้าย SCREEN: พื้นฟ้าอ่อน กรอบฟ้า ตัวหนังสือฟ้าอยู่กลาง เว้นซ้ายขวา 30 px (เท่าของเดิม)
+     *
+     * @return JComponent กล่องที่มีป้าย SCREEN พื้นฟ้าอ่อน กรอบฟ้า (เว้นซ้ายขวา 30 px)
+     */
     private JComponent makeScreen() {
         JLabel screen = new JLabel("SCREEN", SwingConstants.CENTER);
         screen.setFont(MainTheme.FONT_SMALL_BOLD);
@@ -155,7 +159,12 @@ final class SeatMap extends JPanel {
         return holder;
     }
 
-    // ② ที่นั่งทุกแถว เรียงบนลงล่าง: ป้ายแถว + ที่นั่ง + ป้ายแถว
+    /**
+     * ② ที่นั่งทุกแถว เรียงบนลงล่าง: ป้ายแถว + ที่นั่ง + ป้ายแถว
+     *   ไม่รับพารามิเตอร์ อ่านแถวและที่นั่งจาก layout
+     *
+     * @return JComponent ที่นั่งทุกแถว A–F เรียงบนลงล่าง (และจำปุ่มทุกปุ่มไว้ใน buttons)
+     */
     private JComponent makeSeats() {
         JPanel rows = new JPanel();
         rows.setLayout(new BoxLayout(rows, BoxLayout.Y_AXIS));   // เรียงแถวบนลงล่าง
@@ -181,7 +190,13 @@ final class SeatMap extends JPanel {
         return rows;
     }
 
-    // ป้ายแถว เช่น "A" สีเทา / แถว VIP สีส้ม
+    /**
+     * ป้ายแถว เช่น "A" สีเทา / แถว VIP สีส้ม
+     *
+     * @param row ชื่อแถว เช่น 'A'
+     * @param vipRow true ถ้าแถวนี้เป็น VIP (ป้ายสีส้ม) false = สีเทา
+     * @return JLabel ป้ายแถว เช่น "A" ขนาด 20 x 34
+     */
     private static JLabel rowLabel(char row, boolean vipRow) {
         JLabel label = new JLabel(String.valueOf(row), SwingConstants.CENTER);
         label.setFont(MainTheme.FONT_LABEL);
@@ -190,7 +205,12 @@ final class SeatMap extends JPanel {
         return label;
     }
 
-    // ปุ่มที่นั่ง 1 ที่ / จองแล้ว → เทา กดไม่ได้ / ยังว่าง → กดเพื่อเลือก
+    /**
+     * ปุ่มที่นั่ง 1 ที่ / จองแล้ว → เทา กดไม่ได้ / ยังว่าง → กดเพื่อเลือก
+     *
+     * @param seat ที่นั่ง 1 ที่ เช่น F7 (แถว F เลข 7 VIP)
+     * @return JButton ปุ่มที่นั่ง เลข "7" (จองแล้ว = เทา กดไม่ได้ / ว่าง = กดแล้ว toggle(ที่นั่งนี้))
+     */
     private JButton makeSeat(Seat seat) {
         JButton button = new JButton(String.valueOf(seat.number()));   // ตัวเลขบนปุ่ม เช่น "7"
         button.setFont(MainTheme.FONT_SMALL_BOLD);
@@ -214,7 +234,12 @@ final class SeatMap extends JPanel {
         return button;
     }
 
-    // ลูกค้ากดที่นั่ง → เลือกอยู่แล้วก็เอาออก / ยังไม่เลือกก็ใส่ แล้วบอก SeatFrame
+    /**
+     * ลูกค้ากดที่นั่ง → เลือกอยู่แล้วก็เอาออก / ยังไม่เลือกก็ใส่ แล้วบอก SeatFrame
+     *   ผลที่ได้: ใส่/เอาออกจาก chosen, เปลี่ยนสีปุ่ม, เรียก onChange
+     *
+     * @param seat ที่นั่งที่ลูกค้ากด เช่น A3
+     */
     private void toggle(Seat seat) {
         boolean nowChosen;
         if (chosen.contains(seat)) {
@@ -229,7 +254,14 @@ final class SeatMap extends JPanel {
         onChange.run();      // ทำคำสั่งที่ SeatFrame ส่งมา เช่น refreshSummary() คิดราคาใหม่
     }
 
-    // ระบายสีปุ่มที่ยังไม่ถูกจอง: เลือกอยู่ = ฟ้า / VIP = เหลือง / ปกติ = ขาว
+    /**
+     * ระบายสีปุ่มที่ยังไม่ถูกจอง: เลือกอยู่ = ฟ้า / VIP = เหลือง / ปกติ = ขาว
+     *   ผลที่ได้: เปลี่ยนสีพื้น ตัวเลข และกรอบของปุ่มที่ส่งมา
+     *
+     * @param button ปุ่มที่จะระบายสี
+     * @param seat ที่นั่งของปุ่มนั้น (ใช้ดูว่า VIP ไหม)
+     * @param isChosen true ถ้าเลือกอยู่
+     */
     private static void colorSeat(JButton button, Seat seat, boolean isChosen) {
         Color background;
         Color text;
@@ -252,7 +284,11 @@ final class SeatMap extends JPanel {
         button.setBorder(new LineBorder(border, isChosen ? 2 : 1, true));   // เลือกอยู่ = กรอบหนา 2
     }
 
-    // ③ คำอธิบายสี: ประเภทที่นั่งทุกแบบที่มีในผัง (พร้อมราคา) + Selected + Booked
+    /**
+     * ③ คำอธิบายสี: ประเภทที่นั่งทุกแบบที่มีในผัง (พร้อมราคา) + Selected + Booked
+     *
+     * @return JComponent แถบคำอธิบายสี เช่น □ Standard (160 THB)  □ VIP (200 THB)  ■ Selected  □ Booked
+     */
     private JComponent makeLegend() {
         JPanel legend = new JPanel(new FlowLayout(FlowLayout.CENTER, 14, 0));
         legend.setOpaque(false);
@@ -280,7 +316,14 @@ final class SeatMap extends JPanel {
         return legend;
     }
 
-    // คำอธิบาย 1 อัน: กล่องสี 16x16 + ข้อความ
+    /**
+     * คำอธิบาย 1 อัน: กล่องสี 16x16 + ข้อความ
+     *
+     * @param background สีพื้นกล่องตัวอย่าง
+     * @param border สีกรอบ
+     * @param text ข้อความ เช่น "Booked"
+     * @return JPanel คำอธิบาย 1 อัน = กล่องสี 16x16 + ข้อความ
+     */
     private static JPanel legendItem(Color background, Color border, String text) {
         JPanel box = new JPanel();
         box.setPreferredSize(new Dimension(16, 16));
@@ -298,7 +341,9 @@ final class SeatMap extends JPanel {
         return item;
     }
 
-    // ตรวจ Rep Invariant ทุกข้อ ทำงานเฉพาะตอนรันด้วย java -ea (SC4 หน้า 12)
+    /**
+     * ตรวจ Rep Invariant ทุกข้อ ทำงานเฉพาะตอนรันด้วย java -ea (SC4 หน้า 12)
+     */
     private void checkRep() {
         assert layout != null && booked != null && onChange != null && chosen != null && buttons != null
                 : "field ต้องไม่เป็น null";

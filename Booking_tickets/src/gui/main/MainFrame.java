@@ -144,7 +144,12 @@ public final class MainFrame extends JFrame {
         refreshShowtimes();
     }
 
-    // หนังวันนี้ / อ่านไฟล์ไม่ได้ → บอก error แล้วใช้รายการว่าง (MovieRow โชว์ "No movies today")
+    /**
+     * หนังวันนี้ / อ่านไฟล์ไม่ได้ → บอก error แล้วใช้รายการว่าง (MovieRow โชว์ "No movies today")
+     *   ไม่รับพารามิเตอร์ ถาม app.movies().moviesToday
+     *
+     * @return List<Movie> หนังวันนี้ เช่น [Spider-Man, Pacific Rim, ...] / อ่านไฟล์ไม่ได้ → List ว่าง (แจ้ง error ก่อน)
+     */
     private List<Movie> loadMoviesToday() {
         try {
             return app.movies().moviesToday();
@@ -199,8 +204,10 @@ public final class MainFrame extends JFrame {
         showtimeBox.repaint();
     }
 
-    // ⑤ ลูกค้ากดรอบ → เปิดหน้าเลือกที่นั่งของรอบนั้น แล้วปิดหน้านี้ (เหมือนของเดิม)
-    //   SeatFrame อยู่ gui.main เดียวกัน ไม่ต้อง import / อ่านที่นั่งที่จองแล้วไม่ได้ → บอก error อยู่หน้าเดิม
+    /**
+     * ⑤ ลูกค้ากดรอบ → เปิดหน้าเลือกที่นั่งของรอบนั้น แล้วปิดหน้านี้ (เหมือนของเดิม)
+     *   SeatFrame อยู่ gui.main เดียวกัน ไม่ต้อง import / อ่านที่นั่งที่จองแล้วไม่ได้ → บอก error อยู่หน้าเดิม
+     */
     private void openSeats() {
         try {
             new SeatFrame(user, app, showtimeRow.picked()).setVisible(true);
@@ -210,7 +217,9 @@ public final class MainFrame extends JFrame {
         }
     }
 
-    // ⑤ กล่องสมัครสมาชิก: เสร็จ → refreshTopBar / เงินไม่พอแล้วกด Yes → openTopUp
+    /**
+     * ⑤ กล่องสมัครสมาชิก: เสร็จ → refreshTopBar / เงินไม่พอแล้วกด Yes → openTopUp
+     */
     private void openMembership() {
         try {
             new MembershipDialog(this, app.accounts(), user, this::refreshTopBar, this::openTopUp).setVisible(true);
@@ -219,7 +228,9 @@ public final class MainFrame extends JFrame {
         }
     }
 
-    // ⑤ กล่องเติมเงิน: เสร็จ → refreshTopBar
+    /**
+     * ⑤ กล่องเติมเงิน: เสร็จ → refreshTopBar
+     */
     private void openTopUp() {
         try {
             new TopUpDialog(this, app.accounts(), user, this::refreshTopBar).setVisible(true);
@@ -228,7 +239,9 @@ public final class MainFrame extends JFrame {
         }
     }
 
-    // ⑤ กล่องประวัติการจอง (ดูอย่างเดียว)
+    /**
+     * ⑤ กล่องประวัติการจอง (ดูอย่างเดียว)
+     */
     private void openHistory() {
         try {
             new HistoryDialog(this, app.bookings(), user).setVisible(true);
@@ -237,7 +250,9 @@ public final class MainFrame extends JFrame {
         }
     }
 
-    // ⑤ Logout: ถามยืนยัน → ปิดหน้านี้ → หน้า Login ตัวใหม่ด้วย app ตัวเดิม (นาฬิกาและไฟล์ชุดเดิม)
+    /**
+     * ⑤ Logout: ถามยืนยัน → ปิดหน้านี้ → หน้า Login ตัวใหม่ด้วย app ตัวเดิม (นาฬิกาและไฟล์ชุดเดิม)
+     */
     private void handleLogout() {
         int confirm = JOptionPane.showConfirmDialog(this,
                 "Are you sure you want to log out?", "Confirm Logout",
@@ -248,17 +263,34 @@ public final class MainFrame extends JFrame {
         }
     }
 
-    // กล่อง error (ไอคอน X สีแดง)
+    /**
+     * กล่อง error (ไอคอน X สีแดง)
+     *   ผลที่ได้: เด้งกล่อง error อย่างเดียว
+     *
+     * @param message ข้อความ error เช่น "Cannot load movies: movies.csv line 3: ..."
+     */
     private void showError(String message) {
         JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE);
     }
 
-    // ป้ายหัวข้อส่วน เช่น "1. Date" ตัวหนา 12 สีเทาเข้ม อยู่กลาง
+    /**
+     * ป้ายหัวข้อส่วน เช่น "1. Date" ตัวหนา 12 สีเทาเข้ม อยู่กลาง
+     *
+     * @param text หัวข้อส่วน เช่น "1. Date"
+     * @return JLabel ป้ายหัวข้อ ตัวหนา 12 สีเทาเข้ม อยู่กลาง
+     */
     private static JLabel sectionLabel(String text) {
         return text(text, MainTheme.FONT_LABEL, MainTheme.TEXT_LABEL);
     }
 
-    // ป้ายข้อความ อยู่กลางการ์ด
+    /**
+     * ป้ายข้อความ อยู่กลางการ์ด
+     *
+     * @param text ข้อความ เช่น "Select Showtime"
+     * @param font ฟอนต์
+     * @param color สีตัวหนังสือ
+     * @return JLabel ป้ายที่อยู่กลางการ์ด
+     */
     private static JLabel text(String text, Font font, Color color) {
         JLabel label = new JLabel(text);
         label.setFont(font);
@@ -267,7 +299,12 @@ public final class MainFrame extends JFrame {
         return label;
     }
 
-    // ก้อนว่างแนวตั้ง สูง height px
+    /**
+     * ก้อนว่างแนวตั้ง สูง height px
+     *
+     * @param height ความสูงช่องว่างเป็น px เช่น 14
+     * @return Component ก้อนว่างกว้าง 0 สูง height (ใส่คั่นระหว่างของในการ์ด)
+     */
     private static Component gap(int height) {
         return Box.createRigidArea(new Dimension(0, height));
     }

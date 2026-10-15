@@ -122,7 +122,11 @@ final class HistoryDialog extends JDialog {
         setLocationRelativeTo(owner);                                 // เปิดกลางหน้าต่างเจ้าของ
     }
 
-    // ยังไม่เคยจอง → กล่องขาวมีข้อความกลางกล่อง
+    /**
+     * ยังไม่เคยจอง → กล่องขาวมีข้อความกลางกล่อง
+     *
+     * @return JPanel กล่องขาวสูง 120 px มีข้อความ "No booking history yet" อยู่กลาง
+     */
     private static JPanel emptyBox() {
         JPanel box = new JPanel(new GridBagLayout());                // GridBagLayout ใส่ชิ้นเดียว → อยู่กลาง
         box.setBackground(MainTheme.CARD);
@@ -132,9 +136,13 @@ final class HistoryDialog extends JDialog {
         return box;
     }
 
-    // การ์ดของการจอง 1 รายการ
-    //   booking  = การจอง เช่น Booking[B3, tester9, 2026-10-14_1145_3, [C5, C6], 320, 2026-10-14T10:05]
-    //   showtime = รอบของการจองนั้น / null = หาไม่เจอ
+    /**
+     * การ์ดของการจอง 1 รายการ
+     *
+     * @param booking การจอง เช่น Booking[B3, tester9, 2026-10-14_1145_3, [C5, C6], 320, 2026-10-14T10:05]
+     * @param showtime รอบของการจองนั้น / null = หาไม่เจอ
+     * @return JPanel การ์ด 1 ใบ: ซ้าย = รหัส + ชื่อหนัง / วัน เวลา โรง / ที่นั่ง + เวลาที่จอง  ขวา = ราคา
+     */
     private static JPanel card(Booking booking, Showtime showtime) {
         // ซ้าย 3 บรรทัด
         String movieText = showtime != null
@@ -173,7 +181,14 @@ final class HistoryDialog extends JDialog {
         return card;
     }
 
-    // ป้ายข้อความ
+    /**
+     * ป้ายข้อความ
+     *
+     * @param text ข้อความ เช่น "B3  Spider-Man"
+     * @param font ฟอนต์
+     * @param color สีตัวหนังสือ
+     * @return JLabel ป้ายที่ตั้งฟอนต์และสีแล้ว
+     */
     private static JLabel label(String text, Font font, Color color) {
         JLabel label = new JLabel(text);
         label.setFont(font);

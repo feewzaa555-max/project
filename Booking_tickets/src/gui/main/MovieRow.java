@@ -126,9 +126,14 @@ final class MovieRow extends JPanel {
         return selected;
     }
 
-    // อ่านรูปโปสเตอร์ของหนัง 1 เรื่อง
-    //   dataFolder = โฟลเดอร์ data / movie = หนังเรื่องนั้น (posterPath เช่น posters/m1.jpg)
-    //   คืนรูป หรือ null ถ้าไม่มีไฟล์ / อ่านไม่ได้ (ไปวาดการ์ดสีแทน)
+    /**
+     * อ่านรูปโปสเตอร์ของหนัง 1 เรื่อง
+     *   คืนรูป หรือ null ถ้าไม่มีไฟล์ / อ่านไม่ได้ (ไปวาดการ์ดสีแทน)
+     *
+     * @param dataFolder โฟลเดอร์ data เช่น Booking_tickets/data
+     * @param movie หนัง 1 เรื่อง (ใช้ movie.posterPath() เช่น posters/m1.jpg)
+     * @return BufferedImage รูปโปสเตอร์ที่อ่านได้ / ไม่มีไฟล์หรืออ่านไม่ได้ → null
+     */
     private static BufferedImage readPoster(Path dataFolder, Movie movie) {
         if (movie.posterPath().isBlank()) {                    // ไม่ได้ใส่ที่อยู่รูปไว้
             return null;
@@ -145,16 +150,23 @@ final class MovieRow extends JPanel {
         }
     }
 
-    // ความกว้างโปสเตอร์ตามจำนวนหนัง n เรื่อง
-    //   แบ่ง ROW_WIDTH ให้ n ช่อง หักระยะห่างระหว่างช่อง (n - 1 ช่องว่าง) และกรอบซ้ายขวา (2 × FRAME) แล้วไม่ให้เกิน 150
-    //   เช่น 5 เรื่อง: (800 - 4×16) / 5 - 6 = 141 / 10 เรื่อง: (800 - 9×16) / 10 - 6 = 59
-    //   ทั้งแถวจึงกว้างไม่เกิน 800 px เสมอ
+    /**
+     * ความกว้างโปสเตอร์ตามจำนวนหนัง n เรื่อง
+     *   แบ่ง ROW_WIDTH ให้ n ช่อง หักระยะห่างระหว่างช่อง (n - 1 ช่องว่าง) และกรอบซ้ายขวา (2 × FRAME) แล้วไม่ให้เกิน 150
+     *   เช่น 5 เรื่อง: (800 - 4×16) / 5 - 6 = 141 / 10 เรื่อง: (800 - 9×16) / 10 - 6 = 59
+     *   ทั้งแถวจึงกว้างไม่เกิน 800 px เสมอ
+     *   ไม่รับพารามิเตอร์ ใช้จำนวนหนังใน movies ของแถวนี้
+     *
+     * @return int ความกว้างโปสเตอร์เป็น px เช่น 5 เรื่อง → 141 / 10 เรื่อง → 59 (ไม่เกิน MAX_POSTER_WIDTH 150)
+     */
     private int posterWidth() {
         int n = movies.size();
         return Math.min(MAX_POSTER_WIDTH, (ROW_WIDTH - (n - 1) * GAP) / n - 2 * FRAME);
     }
 
-    // วาดแถวใหม่ทั้งแถว ใช้ตอนเริ่มและทุกครั้งที่เปลี่ยนเรื่อง เพื่อให้กรอบฟ้าอยู่ที่เรื่องที่เลือก
+    /**
+     * วาดแถวใหม่ทั้งแถว ใช้ตอนเริ่มและทุกครั้งที่เปลี่ยนเรื่อง เพื่อให้กรอบฟ้าอยู่ที่เรื่องที่เลือก
+     */
     private void drawRow() {
         removeAll();                                       // ลบของเก่าทิ้งก่อน ไม่งั้นซ้อนเพิ่มทุกครั้งที่กด
         if (movies.isEmpty()) {                            // วันนี้ไม่มีหนัง → ข้อความแทน
@@ -174,8 +186,12 @@ final class MovieRow extends JPanel {
         repaint();                                         // วาดใหม่บนจอ
     }
 
-    // การ์ดของหนัง 1 เรื่อง = โปสเตอร์ (กดได้) + ชื่อ + ความยาว เรียงบนลงล่าง
-    //   i = ลำดับเรื่องใน movies (ใช้หยิบรูปใน posters และเลือกสี / ตัวอักษรของการ์ดสีสำรอง)
+    /**
+     * การ์ดของหนัง 1 เรื่อง = โปสเตอร์ (กดได้) + ชื่อ + ความยาว เรียงบนลงล่าง
+     *
+     * @param i ลำดับหนังใน movies เริ่ม 0 เช่น 0 = เรื่องแรก (Spider-Man)
+     * @return JPanel การ์ด 1 ใบ = ปุ่มโปสเตอร์ + ชื่อหนัง + "145 min"
+     */
     private JPanel makeCard(int i) {
         Movie movie = movies.get(i);
         boolean isSelected = movie.equals(selected);       // เรื่องนี้คือเรื่องที่เลือกอยู่ไหม
@@ -225,8 +241,14 @@ final class MovieRow extends JPanel {
         return card;
     }
 
-    // วาดรูปโปสเตอร์ขนาด width x height มุมโค้ง: มีรูป → ย่อ/ขยายรูปจริง / ไม่มีรูป → การ์ดสี + Poster + ตัวอักษร
-    //   i = ลำดับเรื่อง (หยิบรูปที่ posters.get(i), สีที่ i, ตัวอักษร A + i)
+    /**
+     * วาดรูปโปสเตอร์ขนาด width x height มุมโค้ง: มีรูป → ย่อ/ขยายรูปจริง / ไม่มีรูป → การ์ดสี + Poster + ตัวอักษร
+     *
+     * @param i ลำดับหนังเริ่ม 0
+     * @param width ความกว้างรูป px เช่น 141
+     * @param height ความสูงรูป px เช่น 188
+     * @return BufferedImage รูปขนาด width x height มุมโค้ง (มีรูปจริง → ย่อรูป / ไม่มี → การ์ดสี + ตัวอักษร)
+     */
     private BufferedImage posterImage(int i, int width, int height) {
         // TYPE_INT_ARGB = รูปที่มีพื้นโปร่งใสได้ (มุมที่ตัดโค้งออกจะใส ไม่เป็นสี่เหลี่ยมดำ)
         BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
@@ -253,16 +275,26 @@ final class MovieRow extends JPanel {
         return image;
     }
 
-    // เขียนข้อความกึ่งกลางแนวนอน
-    //   g = ปากกา, text = ข้อความ, font = ฟอนต์, width = ความกว้างรูป, baseline = ความสูงของเส้นบรรทัด
+    /**
+     * เขียนข้อความกึ่งกลางแนวนอน
+     *
+     * @param g        ปากกาที่ใช้วาดบนรูปโปสเตอร์สำรอง
+     * @param text     ข้อความ เช่น "Poster" หรือ "A"
+     * @param font     ฟอนต์ เช่น MainTheme.FONT_POSTER_LETTER
+     * @param width    ความกว้างรูป px ใช้หาจุดกึ่งกลาง เช่น 141
+     * @param baseline ความสูงของเส้นบรรทัด px (ตัวหนังสือยืนบนเส้นนี้)
+     */
     private static void drawCentered(Graphics2D g, String text, Font font, int width, int baseline) {
         g.setFont(font);
         int textWidth = g.getFontMetrics().stringWidth(text);   // ข้อความนี้กว้างกี่ px ในฟอนต์นี้
         g.drawString(text, (width - textWidth) / 2, baseline);  // เริ่มเขียนที่ (กว้างรูป - กว้างข้อความ) / 2 → อยู่กลาง
     }
 
-    // เปลี่ยนเรื่องที่เลือก แล้วบอก MainFrame
-    //   movie = หนังของโปสเตอร์ที่ถูกกด
+    /**
+     * เปลี่ยนเรื่องที่เลือก แล้วบอก MainFrame
+     *
+     * @param movie หนังของโปสเตอร์ที่ถูกกด
+     */
     private void pick(Movie movie) {
         selected = movie;    // จำเรื่องใหม่
         drawRow();           // วาดแถวใหม่ กรอบฟ้าย้ายไปเรื่องที่กด
@@ -270,7 +302,9 @@ final class MovieRow extends JPanel {
         onChange.run();      // ทำคำสั่งที่ MainFrame ส่งมา เช่น refreshShowtimes() โหลดรอบฉายของเรื่องใหม่
     }
 
-    // ตรวจ Rep Invariant ทุกข้อ ทำงานเฉพาะตอนรันด้วย java -ea (SC4 หน้า 12)
+    /**
+     * ตรวจ Rep Invariant ทุกข้อ ทำงานเฉพาะตอนรันด้วย java -ea (SC4 หน้า 12)
+     */
     private void checkRep() {
         assert movies != null && posters != null && onChange != null : "field ต้องไม่เป็น null";
         assert posters.size() == movies.size() : "รูปโปสเตอร์ต้องมีเท่าจำนวนหนัง";

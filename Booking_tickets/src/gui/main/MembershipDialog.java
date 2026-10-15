@@ -136,7 +136,9 @@ final class MembershipDialog extends JDialog {
         setLocationRelativeTo(owner);    // เปิดกลางหน้าต่างเจ้าของ
     }
 
-    // ④ กดปุ่มยืนยัน
+    /**
+     * ④ กดปุ่มยืนยัน
+     */
     private void confirm() {
         // เงินไม่ถึงค่าสมาชิก → ถามว่าจะเติมเงินไหม (เช็กก่อน ไม่ต้องรอให้ subscribe throw)
         if (account.balance() < AccountService.MEMBERSHIP_PRICE) {
@@ -169,8 +171,14 @@ final class MembershipDialog extends JDialog {
         }
     }
 
-    // ป้ายข้อความ 1 บรรทัด จัดกลาง
-    //   text = ข้อความ / font = ฟอนต์ / color = สีตัวหนังสือ
+    /**
+     * ป้ายข้อความ 1 บรรทัด จัดกลาง
+     *
+     * @param text ข้อความ
+     * @param font ฟอนต์
+     * @param color สีตัวหนังสือ
+     * @return JLabel ป้าย 1 บรรทัดที่อยู่กลางกล่อง เช่น "Price: 99 THB / 30 days"
+     */
     private static JLabel line(String text, Font font, Color color) {
         JLabel label = new JLabel(text);
         label.setFont(font);
@@ -179,8 +187,16 @@ final class MembershipDialog extends JDialog {
         return label;
     }
 
-    // ปุ่มของกล่อง: พื้น / ตัวหนังสือ / กรอบ
-    //   ขอบ LineBorder(สี, 1, true) = เส้นรอบมุมโค้ง + EmptyBorder(7, 16, 7, 16) = ที่ว่างระหว่างเส้นกับคำ
+    /**
+     * ปุ่มของกล่อง: พื้น / ตัวหนังสือ / กรอบ
+     *   ขอบ LineBorder(สี, 1, true) = เส้นรอบมุมโค้ง + EmptyBorder(7, 16, 7, 16) = ที่ว่างระหว่างเส้นกับคำ
+     *
+     * @param text คำบนปุ่ม เช่น "Confirm Subscription"
+     * @param background สีพื้น
+     * @param foreground สีตัวหนังสือ
+     * @param border สีกรอบ
+     * @return JButton ปุ่มที่ทาสีแล้ว (ยังไม่ได้ผูกว่ากดแล้วทำอะไร คนเรียกผูกเอง)
+     */
     private static JButton button(String text, Color background, Color foreground, Color border) {
         JButton button = new JButton(text);
         button.setFont(MainTheme.FONT_LABEL);

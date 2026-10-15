@@ -241,7 +241,9 @@ final class OrderSummary extends JPanel {
         checkRep();   // ตรวจ RI (SC4 หน้า 12 เรียกท้ายทุกเมธอดที่แก้ rep)
     }
 
-    // เส้นคั่นบาง ๆ มีที่ว่างบนล่าง 10 px
+    /**
+     * เส้นคั่นบาง ๆ มีที่ว่างบนล่าง 10 px
+     */
     private void addDivider() {
         JSeparator line = new JSeparator();
         line.setForeground(MainTheme.CARD_BORDER);
@@ -252,7 +254,14 @@ final class OrderSummary extends JPanel {
         add(gap(10));
     }
 
-    // ป้ายข้อความชิดซ้าย
+    /**
+     * ป้ายข้อความชิดซ้าย
+     *
+     * @param text ข้อความ เช่น "Seats: 0"
+     * @param font ฟอนต์
+     * @param color สีตัวหนังสือ
+     * @return JLabel ป้ายที่ชิดซ้าย
+     */
     private static JLabel label(String text, Font font, Color color) {
         JLabel label = new JLabel(text);
         label.setFont(font);
@@ -261,21 +270,33 @@ final class OrderSummary extends JPanel {
         return label;
     }
 
-    // ข้อความยาวให้ขึ้นบรรทัดใหม่เมื่อกว้างเกิน TEXT_WIDTH (เช่นเลือก 10 ที่ รหัสจะยาวเกินการ์ด)
-    //   <table width=270> = กล่องกว้าง 270 px ข้อความเกินขึ้นบรรทัดใหม่เอง
+    /**
+     * ข้อความยาวให้ขึ้นบรรทัดใหม่เมื่อกว้างเกิน TEXT_WIDTH (เช่นเลือก 10 ที่ รหัสจะยาวเกินการ์ด)
+     *   <table width=270> = กล่องกว้าง 270 px ข้อความเกินขึ้นบรรทัดใหม่เอง
+     *
+     * @param text ข้อความยาว เช่น "Seats: A1, A2, A3, ..."
+     * @return String ข้อความเดิมห่อด้วย <html><table width=270> ให้ JLabel ตัดขึ้นบรรทัดใหม่ได้
+     */
     private static String wrap(String text) {
         return "<html><table width=" + TEXT_WIDTH + " cellpadding=0 cellspacing=0><tr><td>"
                 + text + "</td></tr></table></html>";
     }
 
-    // ก้อนว่างแนวตั้ง สูง height px (ชิดซ้ายเหมือนของอื่น)
+    /**
+     * ก้อนว่างแนวตั้ง สูง height px (ชิดซ้ายเหมือนของอื่น)
+     *
+     * @param height ความสูงช่องว่างเป็น px เช่น 6
+     * @return Component ก้อนว่างกว้าง 0 สูง height (ชิดซ้าย)
+     */
     private static Component gap(int height) {
         Component gap = Box.createRigidArea(new Dimension(0, height));
         ((JComponent) gap).setAlignmentX(Component.LEFT_ALIGNMENT);
         return gap;
     }
 
-    // ตรวจ Rep Invariant ทุกข้อ ทำงานเฉพาะตอนรันด้วย java -ea (SC4 หน้า 12)
+    /**
+     * ตรวจ Rep Invariant ทุกข้อ ทำงานเฉพาะตอนรันด้วย java -ea (SC4 หน้า 12)
+     */
     private void checkRep() {
         assert onBook != null && bookButton != null && warningLabel != null : "field ต้องไม่เป็น null";
         assert seatCount >= 0 && total >= 0 && balance >= 0 : "ตัวเลขต้องไม่ติดลบ";
