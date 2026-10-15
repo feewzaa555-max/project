@@ -55,6 +55,13 @@ final class MainTheme {   // final = ห้ามมี class อื่นมา
     static final Color LIGHT_GRAY = new Color(243, 244, 246);    // พื้นเทาอ่อน: ปุ่มจำนวนเงินด่วนในกล่องเติมเงิน, ปุ่มรอบฉายที่เลยเวลา (606, 1068)
     static final Color DISABLED_TEXT = new Color(156, 163, 175); // ตัวหนังสือเทา: ปุ่มรอบฉายที่เลยเวลา "08:45 Hall 1 · Ended" (1069)
 
+    // ===== หน้าเลือกที่นั่ง (SeatFrame) วงเล็บ = บรรทัดใน gui/SeatFrame.java เดิม =====
+    //   ที่นั่งที่เลือกใช้ PRIMARY / ที่นั่งที่จองแล้วใช้ LIGHT_GRAY + DISABLED_TEXT (มีข้างบนแล้ว)
+    static final Color VIP_BACKGROUND = new Color(254, 243, 199);    // ที่นั่ง VIP แถว F: พื้นเหลืองอ่อน (84)
+    static final Color VIP_TEXT = new Color(180, 83, 9);             // ที่นั่ง VIP: ตัวเลขส้มเข้ม (86)
+    static final Color VIP_BORDER = new Color(245, 158, 11);         // ที่นั่ง VIP: กรอบส้ม (85)
+    static final Color SCREEN = new Color(239, 246, 255);            // พื้นป้าย SCREEN ฟ้าอ่อน บนผังที่นั่ง (303)
+
     // ===== สีพื้นโปสเตอร์สำรอง (ใช้ตอนหาไฟล์รูปโปสเตอร์ไม่เจอ) =====
     //   หนังเรื่องที่ 1 ได้สีแรก เรื่องที่ 2 ได้สีที่สอง ... เรื่องที่ 6 วนกลับมาสีแรก (1184–1188)
     //   List.of(...) = รายการที่แก้ไม่ได้ ไฟล์อื่นเรียก add / set แล้วพังทันที สีจะไม่ถูกเปลี่ยนโดยไม่ตั้งใจ (SC5 หน้า 9 ข้อ 6)
