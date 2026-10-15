@@ -89,6 +89,8 @@ final class LineupPanel extends JPanel {
     /**
      * หนังทั้งหมด ใช้เป็นตัวเลือกของทุกช่อง
      * อ่านไม่ได้ → โชว์ error แล้วคืนรายการว่าง (ช่องเลือกจะว่าง และปุ่ม Save ถูกปิดใน ⑤)
+     *
+     * @return List<Movie> หนังทั้งหมด เช่น [Spider-Man, Pacific Rim, ...] / อ่านไม่ได้ → List ว่าง (แจ้ง error ก่อน)
      */
     private List<Movie> loadAllMovies() {
         try {
@@ -240,7 +242,11 @@ final class LineupPanel extends JPanel {
         }
     }
 
-    /** ⑨ กล่อง error (ไอคอน X สีแดง) ใช้ตอนอ่าน/เขียนไฟล์ไม่ได้ */
+    /**
+     * ⑨ กล่อง error (ไอคอน X สีแดง) ใช้ตอนอ่าน/เขียนไฟล์ไม่ได้
+     *
+     * @param message ข้อความ error เช่น "Cannot save: lineup.csv ..."
+     */
     private void showError(String message) {
         JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE);
     }

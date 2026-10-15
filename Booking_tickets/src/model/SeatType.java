@@ -74,7 +74,9 @@ public enum SeatType {
         return extraPrice;
     }
 
-    // ตรวจ RI
+    /**
+     * ตรวจ RI
+     */
     private void checkRep() {
         assert displayName != null && !displayName.isBlank();
         assert extraPrice >= 0;

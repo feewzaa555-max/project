@@ -37,7 +37,9 @@ final class AdminTheme {
     static final Font FONT_BUTTON = new Font("Tahoma", Font.BOLD, 14);    // ปุ่ม Save
     static final Font FONT_SMALL = new Font("Tahoma", Font.PLAIN, 11);    // ข้อความเล็กใต้ปุ่ม Save
 
-    // ไม่ให้ใคร new AdminTheme() เพราะมีแต่ค่าคงที่ ไม่มีอะไรให้สร้าง
+    /**
+     * ไม่ให้ใคร new AdminTheme() เพราะมีแต่ค่าคงที่ ไม่มีอะไรให้สร้าง
+     */
     private AdminTheme() {
     }
 }

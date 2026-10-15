@@ -22,15 +22,31 @@ public enum AuthError {
     private final AuthField field;   // เอาไว้เช็กว่าจะขึ้นเตือนข้อความใต้ช่องไหน-> username หรือ password 
     private final String message;    // ข้อความที่แสดงบนหน้าจอ
 
+    /**
+     * ผูกข้อผิดพลาดแต่ละแบบกับช่องและข้อความของมัน (Java เรียกเองตอนสร้างค่าใน enum ข้างบน)
+     *
+     * @param field   ช่องที่จะขึ้นข้อความ เช่น AuthField.USERNAME
+     * @param message ข้อความบนจอ เช่น "Please enter username"
+     */
     AuthError(AuthField field, String message) {
         this.field = field;
         this.message = message;
     }
 
+    /**
+     * ช่องที่ต้องขึ้นข้อความนี้ ใช้ให้หน้า Login รู้ว่าเอาข้อความไปไว้ใต้ช่องไหน
+     *
+     * @return AuthField เช่น USERNAME_EMPTY → AuthField.USERNAME
+     */
     public AuthField field() {
         return field;
     }
 
+    /**
+     * ข้อความที่โชว์บนจอ
+     *
+     * @return String เช่น USERNAME_EMPTY → "Please enter username"
+     */
     public String message() {
         return message;
     }

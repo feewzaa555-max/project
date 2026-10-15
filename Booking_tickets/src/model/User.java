@@ -72,7 +72,11 @@ public record User(String username, String password, Role role) {
         return role == Role.ADMIN;
     }
 
-    /** ไม่แสดงรหัสผ่าน กันรหัสหลุดเวลา print หรือดู log  <- ตรงนี้ถ้าไม่ทำแล้วปริ้น User ออกมาตรงๆมันจะได้ User[username=ค่าที่กรอก, password=ค่าที่กรอก] ซึ้งถ้าปริ้นออกมามันจะเห็นรหัส */
+    /**
+     * ไม่แสดงรหัสผ่าน กันรหัสหลุดเวลา print หรือดู log  <- ตรงนี้ถ้าไม่ทำแล้วปริ้น User ออกมาตรงๆมันจะได้ User[username=ค่าที่กรอก, password=ค่าที่กรอก] ซึ้งถ้าปริ้นออกมามันจะเห็นรหัส
+     *
+     * @return String เช่น "User[username=thanawat]" (ไม่มีรหัสผ่าน)
+     */
     @Override
     public String toString() {
         return "User[username=" + username + "]";

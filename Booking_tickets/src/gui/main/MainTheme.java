@@ -87,7 +87,9 @@ final class MainTheme {   // final = ห้ามมี class อื่นมา
     static final Font FONT_POSTER_LABEL = new Font("Tahoma", Font.BOLD, 13);  // คำ "Poster" บนโปสเตอร์สำรอง (1195)
     static final Font FONT_POSTER_LETTER = new Font("Tahoma", Font.BOLD, 36); // ตัวอักษรใหญ่ A, B, C บนโปสเตอร์สำรอง (1201)
 
-    // ไม่ให้ใคร new MainTheme() เพราะมีแต่ค่าคงที่ ไม่มีอะไรให้สร้าง
+    /**
+     * ไม่ให้ใคร new MainTheme() เพราะมีแต่ค่าคงที่ ไม่มีอะไรให้สร้าง
+     */
     private MainTheme() {
     }
 }

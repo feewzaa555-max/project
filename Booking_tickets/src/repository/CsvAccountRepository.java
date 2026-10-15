@@ -107,6 +107,10 @@ public class CsvAccountRepository implements AccountRepository {
      *   findByUsername("Somchai")  → null (ตัวพิมพ์ไม่ตรง)
      *   findByUsername("nok")      → null (nok สมัครแล้วแต่ยังไม่เคยเติมเงิน เลยไม่มีแถว)
      *   ยังไม่มีไฟล์              → null ทุกชื่อ
+     *
+     * @param username ชื่อที่หา เช่น "somchai" (ต้องตรงตัวพิมพ์)
+     * @return Account บัญชีของคนนั้น เช่น Account[somchai, 500, null] / ไม่เจอหรือยังไม่มีไฟล์ → null
+     * @throws IOException ถ้าอ่านไฟล์ไม่ได้ หรือข้อมูลในไฟล์ผิด
      */
     @Override
     public Account findByUsername(String username) throws IOException {
@@ -142,6 +146,9 @@ public class CsvAccountRepository implements AccountRepository {
      *   save(Account[thanawat, 201, 2027-10-29T06:00])
      *   ไฟล์หลัง:  somchai,500,
      *              thanawat,201,2027-10-29T06:00          ← ต่อท้าย
+     *
+     * @param account บัญชีที่จะบันทึก เช่น Account[thanawat, 201, 2027-10-29T06:00] (มีชื่อนี้แล้ว → เขียนทับ / ยังไม่มี → ต่อท้าย)
+     * @throws IOException ถ้าอ่านหรือเขียนไฟล์ไม่ได้
      */
     @Override
     public void save(Account account) throws IOException {

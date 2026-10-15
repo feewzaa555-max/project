@@ -110,7 +110,12 @@ public class CsvUserRepository implements UserRepository {
         Files.write(file, lines, StandardCharsets.UTF_8); //เขียนลง csv
     }
 
-    // อ่านทุกบรรทัดในไฟล์ ถ้ายังไม่มีไฟล์ คืน List ว่าง
+    /**
+     * อ่านทุกบรรทัดในไฟล์ ถ้ายังไม่มีไฟล์ คืน List ว่าง
+     *
+     * @return List<String> ทุกบรรทัดใน users.csv เช่น ["admin,admin1,ADMIN", "thanawat,12345,USER"] / ยังไม่มีไฟล์ → List ว่าง
+     * @throws IOException ถ้าอ่านไฟล์ไม่ได้
+     */
     private List<String> readLines() throws IOException { //<- ถ้าเกิด IOException function นี้จะไม่จัดการแต่จะโยนให้ตัวที่มันเรียกใช้ function นี้
         if (!Files.exists(file)) {
             return new ArrayList<>();//มีไฟล์ไหม
@@ -119,17 +124,21 @@ public class CsvUserRepository implements UserRepository {
         //<-อ่านทีละบรรทัดใน fileแล้วก็ยัดใส่ ArrayList() ทีละตัว -> ["admin,admin1,ADMIN", "somchai,abcde,USER"]  , โดยอ่านเป็น UTF_8
     }
 
-    /*
-        แปลง 1 บรรทัดที่เป็นข้อความ String ให้เป็น User
-        ทำงาน:
-          1. แยกด้วย , ได้มากสุด 3 ช่อง
-          2. ขาดชื่อหรือรหัส (ไม่ถึง 2 ช่อง) หรือชื่อว่าง → บรรทัดเสีย คืน null (ข้ามไป แบบเดิม)
-          3. มีแค่ 2 ช่อง → แถวแบบเก่า ได้ USER
-          4. มี 3 ช่อง → แปลงคำในช่องที่ 3 เป็น Role ถ้าไม่ใช่ USER / ADMIN → throw
-        เช่น "admin,admin1,ADMIN" → ["admin","admin1","ADMIN"] → User[admin, admin1, ADMIN]
-             "somchai,abcde"      → ["somchai","abcde"]        → User[somchai, abcde, USER]
-             "bob,x1234,ADMN"     → Role.valueOf("ADMN") ไม่มี  → throw IOException
-             "nopassword"         → ["nopassword"]             → null
+    /**
+     * แปลง 1 บรรทัดที่เป็นข้อความ String ให้เป็น User
+     * ทำงาน:
+     *   1. แยกด้วย , ได้มากสุด 3 ช่อง
+     *   2. ขาดชื่อหรือรหัส (ไม่ถึง 2 ช่อง) หรือชื่อว่าง → บรรทัดเสีย คืน null (ข้ามไป แบบเดิม)
+     *   3. มีแค่ 2 ช่อง → แถวแบบเก่า ได้ USER
+     *   4. มี 3 ช่อง → แปลงคำในช่องที่ 3 เป็น Role ถ้าไม่ใช่ USER / ADMIN → throw
+     * เช่น "admin,admin1,ADMIN" → ["admin","admin1","ADMIN"] → User[admin, admin1, ADMIN]
+     *      "somchai,abcde"      → ["somchai","abcde"]        → User[somchai, abcde, USER]
+     *      "bob,x1234,ADMN"     → Role.valueOf("ADMN") ไม่มี  → throw IOException
+     *      "nopassword"         → ["nopassword"]             → null
+     *
+     * @param line 1 บรรทัดของ users.csv เช่น "admin,admin1,ADMIN"
+     * @return User ของบรรทัดนั้น เช่น User[admin, admin1, ADMIN] / บรรทัดเสีย → null
+     * @throws IOException ถ้าช่องที่ 3 ไม่ใช่ USER หรือ ADMIN เช่น "ADMN"
      */
     private User parseLine(String line) throws IOException {
         // line.split(",", MAX_COLUMNS) : แยกด้วย , ได้มากสุด 3 ช่อง
@@ -159,7 +168,9 @@ public class CsvUserRepository implements UserRepository {
         return new User(parts[NAME], parts[PASSWORD], role);
     }
 
-    // ตรวจ RI
+    /**
+     * ตรวจ RI
+     */
     private void checkRep() {
         assert file != null; // ตัวแปร file ต้องไม่เป็น null
     }

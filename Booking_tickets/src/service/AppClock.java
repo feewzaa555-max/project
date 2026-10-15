@@ -131,7 +131,9 @@ public class AppClock {
         checkRep();
     }
 
-    // ตรวจ RI
+    /**
+     * ตรวจ RI
+     */
     private void checkRep() {
         assert realClock != null;
         assert offset != null;

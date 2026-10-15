@@ -102,7 +102,12 @@ public class AuthService {
         return user; // ส่งไปให้ตัวที่เรียก 
     }
 
-    // คืน error ทุกข้อที่เจอของช่องชื่อ ตามลำดับการตรวจ หรือ List ว่างถ้าผ่าน
+    /**
+     * คืน error ทุกข้อที่เจอของช่องชื่อ ตามลำดับการตรวจ หรือ List ว่างถ้าผ่าน
+     *
+     * @param name ชื่อที่พิมพ์ในช่อง (ตัดเว้นวรรคหน้าหลังแล้ว) เช่น "1abc"
+     * @return List<AuthError> error ของช่องชื่อ เช่น [USERNAME_TOO_SHORT] / ผ่านหมด → List ว่าง
+     */
     private List<AuthError> usernameFormatErrors(String name) {
         List<AuthError> errors = new ArrayList<>();
         if (name.isEmpty()) {
@@ -125,7 +130,12 @@ public class AuthService {
         return errors;
     }
 
-       // คืน error ทุกข้อที่เจอของช่องรหัส ตามลำดับการตรวจ หรือ List ว่างถ้าผ่าน
+    /**
+     * คืน error ทุกข้อที่เจอของช่องรหัส ตามลำดับการตรวจ หรือ List ว่างถ้าผ่าน
+     *
+     * @param password รหัสที่พิมพ์ในช่อง เช่น "123"
+     * @return List<AuthError> error ของช่องรหัส เช่น [PASSWORD_TOO_SHORT] / ผ่านหมด → List ว่าง
+     */
     private List<AuthError> passwordFormatErrors(String password) {
         List<AuthError> errors = new ArrayList<>();
         if (password.isEmpty()) {
@@ -144,17 +154,29 @@ public class AuthService {
         return errors;
     }
 
-    // เช็กช่วงตรงๆ เพราะ Character.isLetter ยอมรับภาษาไทยด้วย
+    /**
+     * เช็กช่วงตรงๆ เพราะ Character.isLetter ยอมรับภาษาไทยด้วย
+     *
+     * @param c ตัวอักษร 1 ตัว เช่น 'a' หรือ 'ก'
+     * @return true ถ้าเป็น a–z หรือ A–Z เช่น 'a' → true / 'ก' → false
+     */
     private static boolean isEnglishLetter(char c) {
         return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
     }
 
-    // เช็กช่วงตรงๆ เพราะ Character.isDigit ยอมรับเลขไทยด้วย
+    /**
+     * เช็กช่วงตรงๆ เพราะ Character.isDigit ยอมรับเลขไทยด้วย
+     *
+     * @param c ตัวอักษร 1 ตัว เช่น '5' หรือ '๕'
+     * @return true ถ้าเป็น 0–9 เช่น '5' → true / '๕' (เลขไทย) → false
+     */
     private static boolean isDigit(char c) {
         return c >= '0' && c <= '9';
     }
 
-    // ตรวจ RI
+    /**
+     * ตรวจ RI
+     */
     private void checkRep() {
         assert users != null;
     }

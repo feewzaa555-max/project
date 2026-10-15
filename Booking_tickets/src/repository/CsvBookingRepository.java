@@ -107,6 +107,9 @@ public class CsvBookingRepository implements BookingRepository {
      * ตัวอย่าง:
      *   ไฟล์มี 2 บรรทัด B1..., B2...  → [Booking B1, Booking B2]
      *   ยังไม่มีไฟล์                  → []
+     *
+     * @return List<Booking> การจองทุกรายการตามลำดับในไฟล์ / ยังไม่มีไฟล์ → List ว่าง
+     * @throws IOException ถ้าอ่านไฟล์ไม่ได้ หรือข้อมูลในไฟล์ผิด
      */
     @Override
     public List<Booking> findAll() throws IOException {
@@ -145,6 +148,9 @@ public class CsvBookingRepository implements BookingRepository {
      *   ไฟล์ก่อน:  B1,...
      *   save(B2)  → ไฟล์หลัง: B1,...   B2,...
      *   save(B1)  → throw "duplicate booking id: B1" ไฟล์ไม่เปลี่ยน
+     *
+     * @param booking การจองที่จะบันทึก เช่น Booking[B1, somchai, 2026-10-01_H1_1000, [A1, F7], 324, 2026-10-01T09:15]
+     * @throws IOException ถ้าอ่านหรือเขียนไฟล์ไม่ได้
      */
     @Override
     public void save(Booking booking) throws IOException {

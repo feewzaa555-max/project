@@ -198,7 +198,9 @@ public class MovieService {
         return !showtime.hasStarted(clock.now());
     }
 
-    // ตรวจ RI
+    /**
+     * ตรวจ RI
+     */
     private void checkRep() {
         assert movieRepository != null;
         assert clock != null;

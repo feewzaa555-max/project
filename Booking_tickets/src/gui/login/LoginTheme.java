@@ -52,7 +52,9 @@ final class LoginTheme {   // final = ห้ามมี class อื่นม�
     static final Font FONT_BUTTON = new Font("Tahoma", Font.BOLD, 14);     // ปุ่ม Sign In / Create Account
     static final Font FONT_LINK = new Font("Tahoma", Font.BOLD, 12);       // ปุ่มคำ "Sign Up" / "Sign In" ใต้ปุ่มหลัก
 
-    // ไม่ให้ใคร new LoginTheme() เพราะมีแต่ค่าคงที่ ไม่มีอะไรให้สร้าง
+    /**
+     * ไม่ให้ใคร new LoginTheme() เพราะมีแต่ค่าคงที่ ไม่มีอะไรให้สร้าง
+     */
     private LoginTheme() {
     }
 }

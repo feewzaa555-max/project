@@ -1,6 +1,6 @@
-//AdminFrame <- หน้าต่างของ admin: เอาแถบบน (AdminTopBar) การ์ดเลือกหนัง (LineupPanel) และการ์ดตั้งเวลา (ClockPanel) มาประกอบเป็นหน้าเดียว
+//AdminFrame <- หน้าต่างของ admin: เอาแถบบน (AdminTopBar) การ์ดเลือกหนัง (LineupPanel) การ์ดตั้งเวลา (ClockPanel) และปุ่มเพิ่มหนังใหม่ มาประกอบเป็นหน้าเดียว
 /*
-    หน้าตา (เลขตรงกับ ①–⑥ ในโค้ดข้างล่าง):
+    หน้าตา (เลขตรงกับ ①–⑦ ในโค้ดข้างล่าง):
         ┌──────────────────────────────────────────────┐  ① หน้าต่าง 920 x 730 ชื่อ "KU CINEMA - Admin"
         │ AdminTopBar  (KU CINEMA / Admin / Logout)     │  ③ โซนบน (NORTH)
         ├──────────────────────────────────────────────┤
@@ -8,17 +8,22 @@
         │          ┌──── LineupPanel ────┐             │     ในคอลัมน์: lineupBox (ใส่ LineupPanel)
         │          └─────────────────────┘             │                ช่องว่าง 16 px
         │          ┌──── ClockPanel ─────┐             │                ClockPanel
-        │          └─────────────────────┘             │
+        │          └─────────────────────┘             │                ช่องว่าง 12 px
+        │            [ + Add New Movie ]               │                ปุ่มเพิ่มหนังใหม่
         └──────────────────────────────────────────────┘
         กด Logout → ⑤ ถามยืนยัน → ปิดหน้านี้ → เปิดหน้า Login
         กด Set / Reset ใน ClockPanel → ClockPanel บอกว่าเวลาเปลี่ยนแล้ว → ⑥ showLineup() ใส่ LineupPanel ตัวใหม่
                                       → Showing on เป็นวันนี้ (ตามเวลาใหม่) + 1
+        กด + Add New Movie → ⑦ เปิดกล่อง AddMovieDialog → เพิ่มหนังสำเร็จ → ⑥ showLineup()
+                                      → ช่อง Movie 1–5 มีหนังเรื่องใหม่ให้เลือก
 
-    ไฟล์นี้ทำแค่ 3 อย่าง:
+    ไฟล์นี้ทำแค่ 4 อย่าง:
       1. ประกอบหน้าต่าง (ขนาด, พื้นหลัง, วางแถบบน การ์ดเลือกหนัง การ์ดตั้งเวลา)
       2. ปุ่ม Logout: ถามยืนยัน → ปิดหน้านี้ → กลับหน้า Login
       3. เวลาเปลี่ยน → ใส่ LineupPanel ตัวใหม่ ข้อความ Showing on จะได้ตรงกับวันที่ที่ Save จะบันทึก
+      4. ปุ่ม + Add New Movie → เปิดกล่องเพิ่มหนัง → เพิ่มเสร็จใส่ LineupPanel ตัวใหม่ (ช่องเลือกมีเรื่องใหม่)
     ส่วนหน้าตาของแถบบนอยู่ใน AdminTopBar / การเลือกหนังอยู่ใน LineupPanel / การตั้งเวลาอยู่ใน ClockPanel
+    / กล่องกรอกหนังใหม่อยู่ใน AddMovieDialog
 
     เปิดหน้านี้ยังไง (LoginFrame หลัง login แล้วเป็น admin):
         new AdminFrame(user, services).setVisible(true);
@@ -34,8 +39,8 @@
 package gui.admin;
 
 import gui.login.LoginFrame;  // หน้า Login ตัวใหม่ (โฟลเดอร์ gui/login) กด Logout แล้วกลับไปหน้านี้ อยู่คนละ package เลยต้อง import
-import java.awt.*;            // BorderLayout = แบ่งบน/กลาง, GridBagLayout = วางการ์ดไว้กลางจอ, Dimension = ขนาดช่องว่าง
-import javax.swing.*;         // JFrame = หน้าต่าง, JPanel = กล่อง, JOptionPane = กล่องถามยืนยัน Logout, Box/BoxLayout = เรียงการ์ดบนลงล่าง
+import java.awt.*;            // BorderLayout = แบ่งบน/กลาง, GridBagLayout = วางการ์ดไว้กลางจอ, Dimension = ขนาดช่องว่าง, Color / Cursor / Component = สี เมาส์รูปมือ และการจัดกลางของปุ่ม + Add New Movie
+import javax.swing.*;         // JFrame = หน้าต่าง, JPanel = กล่อง, JOptionPane = กล่องถามยืนยัน Logout, Box/BoxLayout = เรียงการ์ดบนลงล่าง, JButton / BorderFactory = ปุ่ม + Add New Movie และกรอบของปุ่ม
 import model.User;            // admin ที่ login อยู่
 import service.AppServices;   // ของหลังบ้านชุดเดียวกับทั้งโปรแกรม
 
@@ -93,6 +98,8 @@ public final class AdminFrame extends JFrame {
         column.add(lineupBox);
         column.add(Box.createRigidArea(new Dimension(0, 16)));
         column.add(new ClockPanel(services.clock(), this::showLineup));
+        column.add(Box.createRigidArea(new Dimension(0, 12)));   // ช่องว่าง 12 px ระหว่างการ์ดตั้งเวลากับปุ่ม
+        column.add(makeAddMovieButton());                        // ⑦ ปุ่ม + Add New Movie
 
         //    GridBagLayout ใส่ของชิ้นเดียว (column) → วางไว้กลางพื้นที่ ตามขนาดของมัน (560 x 566) ไม่ยืดเต็ม
         JPanel center = new JPanel(new GridBagLayout());
@@ -127,8 +134,43 @@ public final class AdminFrame extends JFrame {
     }
 
     /**
+     * ⑦ ปุ่ม "+ Add New Movie" พื้นขาว ตัวหนังสือ/กรอบฟ้า อยู่กลางคอลัมน์
+     * กดแล้วเปิดกล่องเพิ่มหนัง (openAddMovie)
+     *
+     * @return JButton ปุ่ม + Add New Movie ที่ผูกกับ openAddMovie แล้ว
+     */
+    private JButton makeAddMovieButton() {
+        JButton button = new JButton("+ Add New Movie");
+        button.setFont(AdminTheme.FONT_BUTTON);
+        button.setForeground(AdminTheme.PRIMARY);
+        button.setBackground(Color.WHITE);
+        button.setFocusPainted(false);                          // กดแล้วไม่วาดกรอบประรอบคำ
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));       // ชี้แล้วเป็นรูปมือ
+        button.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(AdminTheme.PRIMARY, 1, true),      // กรอบฟ้ามุมโค้ง
+                BorderFactory.createEmptyBorder(8, 20, 8, 20)));                  // ที่ว่างระหว่างกรอบกับคำ
+        // setAlignmentX(CENTER) = อยู่กลางคอลัมน์ (ใน BoxLayout ทุกชิ้นต้องตั้งเท่ากัน JButton ปกติชิดซ้าย)
+        button.setAlignmentX(Component.CENTER_ALIGNMENT);
+        button.addActionListener(e -> openAddMovie());          // กดปุ่ม → openAddMovie()
+        return button;
+    }
+
+    /**
+     * ⑦ เปิดกล่องเพิ่มหนังใหม่ (AddMovieDialog) เพิ่มสำเร็จแล้วกล่องจะเรียก showLineup (⑥)
+     * ช่อง Movie 1–5 จะได้มีหนังเรื่องใหม่ให้เลือกทันที
+     */
+    private void openAddMovie() {
+        // new AddMovieDialog(หน้าต่างแม่, admin ที่ login อยู่, ตัวเพิ่มหนัง, สิ่งที่ทำหลังเพิ่มสำเร็จ)
+        //   this              = หน้า admin นี้ กล่องจะเด้งกลางหน้านี้
+        //   admin             = คนที่ login อยู่ ให้ AdminService เช็กว่าเป็น admin
+        //   services.admin()  = AdminService ตัวเดียวของโปรแกรม (AppServices.java) มีเมธอด addMovie
+        //   this::showLineup  = เพิ่มสำเร็จ → ใส่ LineupPanel ตัวใหม่ (อ่านหนังใหม่จาก movies.csv)
+        new AddMovieDialog(this, admin, services.admin(), this::showLineup).setVisible(true);
+    }
+
+    /**
      * ⑥ ใส่ LineupPanel ตัวใหม่ลง lineupBox
-     * ใช้ 2 ที่: ตอนเปิดหน้า (②) และตอน ClockPanel บอกว่าเวลาเปลี่ยนแล้ว (ส่งไปเป็น this::showLineup)
+     * ใช้ 3 ที่: ตอนเปิดหน้า (②), ตอน ClockPanel บอกว่าเวลาเปลี่ยนแล้ว และตอนเพิ่มหนังใหม่สำเร็จ (⑦) (ส่งไปเป็น this::showLineup)
      * ทำไมต้องสร้างใหม่: LineupPanel เขียน "Showing on 15/10/2026" ครั้งเดียวตอนสร้าง
      *   ไม่สร้างใหม่ → ตั้งเวลาเป็น 20/10 แล้วจอยังบอก 15/10 แต่กด Save จะบันทึกของ 21/10 (จอหลอก admin)
      *   สร้างใหม่    → ตัวใหม่ถาม tomorrow() ใหม่ → Showing on 21/10/2026 ตรงกับที่ Save จะบันทึก

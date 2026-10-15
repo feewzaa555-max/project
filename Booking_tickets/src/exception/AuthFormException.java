@@ -61,7 +61,9 @@ public final class AuthFormException extends Exception {
         return messages;
     }
 
-    // ตรวจ RI
+    /**
+     * ตรวจ RI
+     */
     private void checkRep() {
         assert !errors.isEmpty();
         for (AuthField field : errors.keySet()) {
