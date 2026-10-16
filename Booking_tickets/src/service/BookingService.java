@@ -87,6 +87,8 @@ public class BookingService {
     /** นาฬิกาตัวเดียวของโปรแกรม */
     private final AppClock clock;
 
+    //public static final int MAX_SEATS_PER_BOOKING = 6;
+    
     /**
      * รับทุกอย่างที่ต้องใช้เข้ามาทาง constructor ไม่ new เอง (SC5 DIP)
      *
@@ -215,6 +217,11 @@ public class BookingService {
         requireNonNull(user, "user");
         requireNonNull(showtime, "showtime");
         requireNonNull(seats, "seats");
+
+        /*if (seats.size() > MAX_SEATS_PER_BOOKING) {
+        throw new IllegalArgumentException(
+            "You can book at most " + MAX_SEATS_PER_BOOKING + " seats per booking.");
+        }*/
 
         // 2. showtime.hasStarted(clock.now())
         //   clock.now() = เวลาตอนนี้ของโปรแกรม เช่น 1/10 10:00 → รอบ 10:00 เริ่มแล้ว → จองไม่ได้
