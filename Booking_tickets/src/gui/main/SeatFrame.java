@@ -54,11 +54,27 @@ import model.Showtime;                      // รอบที่ลูกค้
 import model.User;                          // ลูกค้าที่ login อยู่
 import service.AppServices;                 // ของหลังบ้านชุดเดียวกับทั้งโปรแกรม
 
+
+/*
+ * คลาส SeatFrame ทำหน้าที่สร้างและควบคุมหน้าเลือกที่นั่งและจองตั๋วหนัง
+ * โดยนำส่วนประกอบ UI จากคลาสอื่นมาประกอบเข้าด้วยกัน
+ * และเชื่อมต่อกับระบบหลังบ้านผ่าน AppServices
+ */
 public final class SeatFrame extends JFrame {
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");   // 14/10/2026
     private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm");        // 11:45
 
+    
+/*
+ * ตัวแปรหลักของหน้า:
+ * user     = ผู้ใช้ที่กำลังเข้าสู่ระบบ
+ * app      = บริการหลังบ้านสำหรับจัดการบัญชีและการจอง
+ * showtime = รอบฉายหนังที่ผู้ใช้เลือก
+ * topBar   = แถบเมนูด้านบน
+ * seatMap  = ผังที่นั่งสำหรับเลือกที่นั่ง
+ * summary  = การ์ดสรุปราคาและปุ่มจอง
+ */
     private final User user;                 // ลูกค้าที่ login อยู่
     private final AppServices app;           // ของหลังบ้าน: accounts() / bookings() / layout() / clock()
     private final Showtime showtime;         // รอบที่กำลังเลือกที่นั่ง
@@ -76,6 +92,20 @@ public final class SeatFrame extends JFrame {
      * @throws IllegalArgumentException ถ้าค่าไหนเป็น null หรือ user เป็น admin
      * @throws IOException ถ้าอ่านไฟล์การจอง (ที่นั่งที่จองแล้ว) ไม่ได้
      */
+    
+     /*
+      * สร้างหน้าเลือกที่นั่งและจองตั๋วหนัง
+      * 1. ตรวจสอบว่า user, app และ showtime ไม่เป็น null
+      * 2. ป้องกันไม่ให้ Admin เข้าหน้าจองตั๋ว
+      * 3. กำหนดขนาดและคุณสมบัติของหน้าต่าง
+      * 4. สร้างแถบเมนู ผังที่นั่ง และการ์ดสรุปราคา
+      * 5. อ่านข้อมูลที่นั่งที่ถูกจองแล้วจากระบบ
+      * 6. ประกอบ UI และเรียก refresh() เพื่อแสดงข้อมูลเริ่มต้น
+      *
+      * @throws IllegalArgumentException เมื่อข้อมูลไม่ถูกต้อง
+      * @throws IOException เมื่ออ่านข้อมูลที่นั่งที่ถูกจองแล้วไม่ได้
+      */
+
     public SeatFrame(User user, AppServices app, Showtime showtime) throws IOException {
         // ตรวจของที่ส่งเข้ามาก่อน ผิดตั้งแต่ต้น → หยุดเลย ไม่เปิดหน้าครึ่ง ๆ (SC2 หน้า 9)
         if (user == null || app == null || showtime == null) {
@@ -96,15 +126,30 @@ public final class SeatFrame extends JFrame {
         setResizable(false);
 
         // ② แถบบน: ปุ่ม 4 ปุ่มส่งเมธอดของหน้านี้ไปให้
+        
+        /*
+         * สร้างแถบเมนูด้านบน โดยส่งเมธอดสำหรับจัดการปุ่มต่าง ๆ ไปให้
+         * ได้แก่ สมัครสมาชิก เติมเงิน ดูประวัติการจอง และออกจากระบบ
+         */
         topBar = new MainTopBar(user.username(), this::openMembership, this::openTopUp, this::openHistory, this::handleLogout);
 
         // ④ ผังที่นั่ง + การ์ดสรุป
-        //    bookedSeats(รอบ) = รหัสที่นั่งที่จองแล้วของรอบนี้ เช่น {A1, F7} อ่านไม่ได้ → IOException ออกไปให้คนเปิดหน้า
+        //    bookedSeats(รอบ) = รหัสที่นั่งที่จองแล้วของรอบนี้ เช่น {A1, F7} อ่านไม่ได้ → IOException ออกไปให้คนเปิดหน้า       
+        /*
+         * อ่านรหัสที่นั่งที่ถูกจองแล้วของรอบฉายนี้
+         * จากนั้นส่งข้อมูลไปสร้าง SeatMap เพื่อให้ผู้ใช้เลือกที่นั่ง
+         * และสร้าง OrderSummary สำหรับแสดงราคาและปุ่มจอง
+         * เมื่อเลือกที่นั่ง จะเรียก refresh() เพื่ออัปเดตข้อมูล
+         */
         Set<String> booked = app.bookings().bookedSeats(showtime);
         seatMap = new SeatMap(app.layout(), booked, this::refresh);
         summary = new OrderSummary(this::handleBooking);
 
         // ประกอบ: หัวรอบอยู่บน / ผังกลาง / การ์ดสรุปขวา เว้นขอบ บน 12 ซ้าย 18 ล่าง 14 ขวา 18 (เท่าของเดิม)
+        // ประกอบหน้าจอหลัก โดยใช้ BorderLayout
+        // NORTH  = หัวรอบหนัง (makeBanner)
+        // CENTER = ผังที่นั่ง (seatMap)
+        // EAST   = การ์ดสรุปราคาและปุ่มจอง (summary)
         JPanel content = new JPanel(new BorderLayout(16, 12));   // ห่างกันแนวนอน 16 แนวตั้ง 12
         content.setBackground(MainTheme.BACKGROUND);
         content.setBorder(new EmptyBorder(12, 18, 14, 18));
@@ -112,12 +157,16 @@ public final class SeatFrame extends JFrame {
         content.add(seatMap, BorderLayout.CENTER);
         content.add(summary, BorderLayout.EAST);
 
+        // สร้างหน้าจอหลักและวางแถบเมนูไว้ด้านบน
+        // NORTH  = แถบเมนู MainTopBar
+        // CENTER = พื้นที่เนื้อหาที่ประกอบไว้ใน content
         JPanel root = new JPanel(new BorderLayout());
         root.setBackground(MainTheme.BACKGROUND);
         root.add(topBar, BorderLayout.NORTH);
         root.add(content, BorderLayout.CENTER);
         setContentPane(root);
 
+        // อัปเดตยอดเงินและราคาครั้งแรกเมื่อเปิดหน้า
         refresh();   // ข้อมูลครั้งแรก: ยอดเงิน + การ์ดสรุป (ยังไม่เลือกที่นั่ง)
     }
 
@@ -128,6 +177,17 @@ public final class SeatFrame extends JFrame {
      *
      * @return JPanel แถบหัวรอบ = ปุ่ม ← Back + ชื่อหนัง + "Hall 3 · Date: 14/10/2026 · Time: 11:45 - 14:10 (145 min)"
      */
+    
+     /*
+      * สร้างส่วนหัวของหน้าจองตั๋ว ประกอบด้วย
+      * - ปุ่ม Back สำหรับกลับไปหน้าเลือกหนัง
+      * - ชื่อภาพยนตร์
+      * - หมายเลขโรง วันที่ เวลาเริ่มและเวลาสิ้นสุด
+      * - ความยาวของภาพยนตร์เป็นนาที
+      *
+      * จัดวางปุ่ม Back ทางซ้ายและรายละเอียดหนังทางขวา
+      */
+
     private JPanel makeBanner() {
         JButton back = new JButton("← Back");
         back.setFont(MainTheme.FONT_LABEL);
@@ -175,6 +235,16 @@ public final class SeatFrame extends JFrame {
      * เรียกตอนเปิดหน้า, ทุกครั้งที่กดที่นั่ง, หลังเติมเงิน / สมัครสมาชิก
      * อ่านไม่ได้ → แถบบน "Balance: -" และบอก error (ปุ่มจองคงสถานะเดิม จองจริงก็ตรวจซ้ำอีกที)
      */
+    
+     /*
+      * อ่านข้อมูลบัญชีของผู้ใช้จากระบบหลังบ้าน
+      * แล้วอัปเดตยอดเงินบนแถบเมนูและราคาบนการ์ดสรุป
+      * โดยใช้รายการที่นั่งที่เลือกและเวลาปัจจุบันประกอบการคำนวณ
+      * หากอ่านข้อมูลบัญชีไม่ได้ จะแสดงยอดเงินเป็น "-" และแจ้งข้อผิดพลาด
+      *
+      * เมธอดนี้ถูกเรียกตอนเปิดหน้า เลือกที่นั่ง เติมเงิน
+      * และสมัครสมาชิกเสร็จสิ้น
+      */
     private void refresh() {
         try {
             Account account = app.accounts().accountOf(user);
@@ -189,6 +259,18 @@ public final class SeatFrame extends JFrame {
     /**
      * ⑤ กดปุ่มจอง: ถามยืนยัน → จองจริง → โชว์ตั๋ว (ปุ่มจองกดได้เฉพาะตอนเลือกแล้วและเงินพอ)
      */
+    
+     /*
+      * ดำเนินการจองตั๋วตามลำดับดังนี้
+      * 1. รวบรวมรายการที่นั่งและรหัสที่นั่งที่เลือก
+      * 2. คำนวณยอดเงินที่ต้องชำระ
+      * 3. แสดงกล่องให้ผู้ใช้ยืนยันการจอง
+      * 4. หากยืนยัน เรียก book() เพื่อทำรายการจองจริง
+      * 5. หากจองสำเร็จ เปิด TicketDialog เพื่อแสดงตั๋ว
+      * 6. หากเกิดข้อผิดพลาด แสดงข้อความแจ้งผู้ใช้
+      *
+      * หากผู้ใช้ยกเลิกการยืนยัน จะไม่ดำเนินการจอง
+      */
     private void handleBooking() {
         List<Seat> seats = seatMap.selected();
         List<String> codes = new ArrayList<>();
@@ -219,9 +301,11 @@ public final class SeatFrame extends JFrame {
         }
     }
 
-    /**
-     * กลับหน้าเลือกหนัง (กด Back / ปิดตั๋ว)
-     */
+
+      /*
+       * เปิดหน้า MainFrame เพื่อกลับไปเลือกภาพยนตร์
+       * แล้วปิดหน้า SeatFrame ปัจจุบัน
+       */
     private void backToMain() {
         new MainFrame(user, app).setVisible(true);
         dispose();
@@ -230,6 +314,14 @@ public final class SeatFrame extends JFrame {
     /**
      * ⑤ กล่องสมัครสมาชิก: เสร็จ → refresh (ราคาลดทันที) / เงินไม่พอแล้วกด Yes → openTopUp
      */
+
+    /*
+     * เปิดหน้าต่างสมัครสมาชิก
+     * เมื่อดำเนินการเสร็จ จะเรียก refresh() เพื่ออัปเดตข้อมูลบัญชี
+     * และราคาตั๋วตามสิทธิ์สมาชิก
+     * หากเงินไม่เพียงพอ สามารถเรียกหน้าต่างเติมเงินได้
+     */
+
     private void openMembership() {
         try {
             new MembershipDialog(this, app.accounts(), user, this::refresh, this::openTopUp).setVisible(true);
@@ -240,6 +332,12 @@ public final class SeatFrame extends JFrame {
 
     /**
      * ⑤ กล่องเติมเงิน: เสร็จ → refresh (ปุ่มจองอาจกดได้แล้ว)
+     */
+    
+    /*
+     * เปิดหน้าต่างเติมเงินเข้าบัญชีของผู้ใช้
+     * เมื่อเติมเงินเสร็จ จะเรียก refresh() เพื่ออัปเดตยอดเงิน
+     * และสถานะการจองบนหน้าจอ
      */
     private void openTopUp() {
         try {
@@ -252,6 +350,12 @@ public final class SeatFrame extends JFrame {
     /**
      * ⑤ กล่องประวัติการจอง (ดูอย่างเดียว)
      */
+    
+    /*
+     * เปิดหน้าต่างประวัติการจองของผู้ใช้
+     * โดยใช้บริการจองตั๋วจาก AppServices
+     * หากอ่านข้อมูลประวัติไม่ได้ จะแสดงข้อความแจ้งข้อผิดพลาด
+     */
     private void openHistory() {
         try {
             new HistoryDialog(this, app.bookings(), user).setVisible(true);
@@ -262,6 +366,13 @@ public final class SeatFrame extends JFrame {
 
     /**
      * ⑤ Logout: ถามยืนยัน → ปิดหน้านี้ → หน้า Login ด้วย app ตัวเดิม
+     */
+    
+    /*
+     * แสดงกล่องยืนยันการออกจากระบบ
+     * หากผู้ใช้ยืนยัน จะปิดหน้า SeatFrame
+     * และเปิดหน้า LoginFrame โดยใช้ AppServices ตัวเดิม
+     * หากผู้ใช้ยกเลิก จะยังคงอยู่หน้าเดิม
      */
     private void handleLogout() {
         int confirm = JOptionPane.showConfirmDialog(this,
@@ -278,6 +389,12 @@ public final class SeatFrame extends JFrame {
      *   ผลที่ได้: เด้งกล่อง error อย่างเดียว
      *
      * @param message ข้อความ error เช่น "Cannot retrieve account data: ..."
+     */
+    
+    /*
+     * แสดงกล่องข้อความแจ้งข้อผิดพลาดในรูปแบบ Error
+     * โดยรับข้อความจากเมธอดที่เรียกใช้
+     * เพื่อให้ผู้ใช้ทราบว่าเกิดปัญหาในการทำงานส่วนใด
      */
     private void showError(String message) {
         JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE);
