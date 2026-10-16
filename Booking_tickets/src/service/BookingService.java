@@ -71,6 +71,8 @@ public class BookingService {
     private static final String ID_PREFIX = "B";
     /** เลขของการจองครั้งแรก → B1 */
     private static final int FIRST_BOOKING_NUMBER = 1;
+    /** ที่นั่งที่ติดกันเป็นกลุ่ม (ซ้าย-ขวา / หน้า-หลัง) ได้ไม่เกินกี่ที่ */
+    public static final int MAX_SEATS_TOGETHER = 2;
     /** ตัวคั่นในรหัสรอบ "2026-10-01_H1_1000" ส่วนแรกก่อน _ คือวันที่ */
     private static final String SHOWTIME_ID_SEPARATOR = "_";
 
@@ -87,8 +89,6 @@ public class BookingService {
     /** นาฬิกาตัวเดียวของโปรแกรม */
     private final AppClock clock;
 
-    //public static final int MAX_SEATS_PER_BOOKING = 6;
-    
     /**
      * รับทุกอย่างที่ต้องใช้เข้ามาทาง constructor ไม่ new เอง (SC5 DIP)
      *
@@ -218,11 +218,6 @@ public class BookingService {
         requireNonNull(showtime, "showtime");
         requireNonNull(seats, "seats");
 
-        /*if (seats.size() > MAX_SEATS_PER_BOOKING) {
-        throw new IllegalArgumentException(
-            "You can book at most " + MAX_SEATS_PER_BOOKING + " seats per booking.");
-        }*/
-
         // 2. showtime.hasStarted(clock.now())
         //   clock.now() = เวลาตอนนี้ของโปรแกรม เช่น 1/10 10:00 → รอบ 10:00 เริ่มแล้ว → จองไม่ได้
         if (showtime.hasStarted(clock.now())) {
@@ -263,6 +258,26 @@ public class BookingService {
             realSeats.add(real);
         }
 
+        // 4.1 ที่นั่งติดกันได้ไม่เกิน 2 ที่ (จองแยกที่ที่ไม่ติดกันได้ ไม่จำกัดจำนวน)
+        //     วิธีเช็ก: ที่นั่งแต่ละตัว มีที่นั่งข้าง ๆ ที่เลือกด้วยได้ไม่เกิน 1 ตัว
+        //       A1 A2          → A1 มีข้าง ๆ 1 (A2) ผ่าน
+        //       A1 A3 A5       → ไม่มีใครติดกัน ผ่าน
+        //       A1 A2 A3       → A2 มีข้าง ๆ 2 (A1, A3) ไม่ผ่าน
+        //       B1 C1 D1       → C1 มีข้าง ๆ 2 (B1, D1) ไม่ผ่าน
+        //       A1 A2 B1 (ตัว L) → A1 มีข้าง ๆ 2 (A2, B1) ไม่ผ่าน
+        for (Seat seat : realSeats) {
+            int neighbours = 0;
+            for (Seat other : realSeats) {
+                if (isNextTo(seat, other)) {
+                    neighbours++;
+                }
+            }
+            if (neighbours > MAX_SEATS_TOGETHER - 1) {
+                throw new IllegalArgumentException("At most " + MAX_SEATS_TOGETHER
+                        + " seats next to each other (e.g. A1 A2 is OK, A1 A2 A3 is not).");
+            }
+        }
+
         // 5. ที่นั่งที่เลือกไปชนกับที่ถูกจองแล้วไหม
         //   taken = {A1, F7}, codes = [C5, F7] → F7 ชน → "ที่นั่ง F7 ถูกจองไปแล้ว"
         Set<String> taken = bookedSeats(showtime);
@@ -299,6 +314,25 @@ public class BookingService {
         //   total = ยอดที่คิดได้ในข้อ 6 เช่น 324
         accountService.pay(user, total);
         return booking;
+    }
+
+    /**
+     * ที่นั่ง 2 ตัวอยู่ติดกันไหม (ซ้าย-ขวา หรือ หน้า-หลัง ไม่นับแนวทแยง)
+     *
+     * วิธีคิด: ระยะห่างแถว + ระยะห่างเลข ต้องเท่ากับ 1 พอดี
+     *   A1 กับ A2 → แถวห่าง 0 เลขห่าง 1 → รวม 1 ติดกัน
+     *   A1 กับ B1 → แถวห่าง 1 เลขห่าง 0 → รวม 1 ติดกัน
+     *   A1 กับ B2 → แถวห่าง 1 เลขห่าง 1 → รวม 2 แนวทแยง ไม่ติด
+     *   A1 กับ A3 → แถวห่าง 0 เลขห่าง 2 → รวม 2 ไม่ติด
+     *
+     * @param a ที่นั่งตัวแรก ห้าม null
+     * @param b ที่นั่งตัวที่สอง ห้าม null
+     * @return true ถ้าอยู่ติดกันในแนวนอนหรือแนวตั้ง
+     */
+    private static boolean isNextTo(Seat a, Seat b) {
+        int rowGap = Math.abs(a.row() - b.row());          // char ลบกันได้เป็นตัวเลข 'B' - 'A' = 1
+        int numberGap = Math.abs(a.number() - b.number());
+        return rowGap + numberGap == 1;
     }
 
     /**
