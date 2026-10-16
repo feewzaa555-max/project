@@ -152,7 +152,7 @@ public final class AdminFrame extends JFrame {
         JPanel row = new JPanel(new FlowLayout(FlowLayout.CENTER, 12, 0));
         row.setOpaque(false);                                   // โปร่งใส เห็นพื้นเทาข้างหลัง
         row.add(makeOutlineButton("+ Add New Movie", AdminTheme.PRIMARY, this::openAddMovie));
-        row.add(makeOutlineButton("- Delete Movie", AdminTheme.LOGOUT_TEXT, this::openDeleteMovie)); // แดงเดียวกับ Logout = ปุ่มที่ต้องระวัง
+        //row.add(makeOutlineButton("- Delete Movie", AdminTheme.LOGOUT_TEXT, this::openDeleteMovie)); // แดงเดียวกับ Logout = ปุ่มที่ต้องระวัง
         // setAlignmentX(CENTER) = อยู่กลางคอลัมน์ (ใน BoxLayout ทุกชิ้นต้องตั้งเท่ากัน)
         // setMaximumSize(ขนาดพอดี) = กัน BoxLayout ยืดแถวนี้ให้สูงเกินปุ่ม
         row.setAlignmentX(Component.CENTER_ALIGNMENT);
